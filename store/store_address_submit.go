@@ -93,6 +93,25 @@ func (ass *AddressSubmitStore) List(addressID *uint64, rootHash *string, txHash 
 	}
 
 	list := new([]AddressSubmit)
+	if len(conds) == 0 {
+		var address Address
+		exist, err := ass.Store.GetById(&address, *addressID)
+		if err != nil {
+			return 0, nil, err
+		}
+		if !exist {
+			return 0, nil, errors.New("address info not exists")
+		}
+
+		total := int64(address.Files)
+		if total <= int64(skip) {
+			return total, *list, nil
+		}
+		if err := dbRaw.Order(orderBy).Offset(skip).Limit(limit).Find(list).Error; err != nil {
+			return 0, nil, err
+		}
+	}
+
 	total, err := ass.Store.ListByOrder(dbRaw, orderBy, skip, limit, list)
 	if err != nil {
 		return 0, nil, err
