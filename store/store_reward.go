@@ -17,7 +17,7 @@ type Reward struct {
 	Miner        string          `gorm:"-"`
 	MinerID      uint64          `gorm:"primaryKey;autoIncrement:false"`
 	TxHash       string          `gorm:"size:66;primaryKey;autoIncrement:false"`
-	BlockTime    time.Time       `gorm:"not null"`
+	BlockTime    time.Time       `gorm:"not null;index:idx_bt"`
 	PricingIndex uint64          `gorm:"not null"`
 	Amount       decimal.Decimal `gorm:"type:decimal(65);not null"`
 }
