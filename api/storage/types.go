@@ -166,6 +166,7 @@ type StorageFileStat struct {
 type MinerRewardStat struct {
 	AvgReward24Hours decimal.Decimal `json:"avgReward24Hours"` // average reward in 24 hours
 	TotalReward      decimal.Decimal `json:"totalReward"`      // Total amount of miner reward
+	TotalWinCount    uint64          `json:"totalWinCount"`    // Total win count
 }
 
 // TokenInfo model info
@@ -329,9 +330,10 @@ type FilesTopn struct {
 // RewardTopn model info
 // @Description Reward topn information
 type RewardTopn struct {
-	Rank    int             `json:"rank"`        // Data ranking
-	Address string          `json:"miner"`       // Address on blockchain
-	Amount  decimal.Decimal `json:"totalReward"` // Reward amount
+	Rank     int             `json:"rank"`          // Data ranking
+	Address  string          `json:"miner"`         // Address on blockchain
+	Amount   decimal.Decimal `json:"totalReward"`   // Reward amount
+	WinCount uint64          `json:"totalWinCount"` // Win count
 }
 
 // DataTopnList model info

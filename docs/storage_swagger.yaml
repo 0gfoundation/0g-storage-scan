@@ -237,6 +237,9 @@ definitions:
       totalReward:
         description: Total amount of miner reward
         type: number
+      totalWinCount:
+        description: Total win count
+        type: integer
     type: object
   storage.MinerStat:
     description: Miner stat data information
@@ -334,6 +337,9 @@ definitions:
       totalReward:
         description: Reward amount
         type: number
+      totalWinCount:
+        description: Win count
+        type: integer
     type: object
   storage.RewardTopnList:
     description: Topn list of files

@@ -74,7 +74,7 @@ func (s *Syncer) mustLoadLastSyncBlock() {
 }
 
 func (s *Syncer) loadLastSyncBlock() (loaded bool, err error) {
-	maxBlock, ok, err := s.db.MaxBlock()
+	maxBlock, ok, err := s.db.BlockStore.MaxBlock()
 	if err != nil {
 		return false, errors.WithMessage(err, "Failed to get max block from block table")
 	}
@@ -241,7 +241,7 @@ func (s *Syncer) latestStoreBlock() uint64 {
 // Ideally, one by one block to check and prune reorg data is fine though, this could be improved with binary search probing.
 func (s *Syncer) checkReorgData() error {
 	for {
-		blockNum, ok, err := s.db.MaxBlock()
+		blockNum, ok, err := s.db.BlockStore.MaxBlock()
 		if err != nil {
 			return err
 		}

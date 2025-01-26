@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/0glabs/0g-storage-scan/store"
+	"github.com/Conflux-Chain/go-conflux-util/math"
 	"github.com/openweb3/web3go"
 	"github.com/openweb3/web3go/types"
 	"github.com/pkg/errors"
@@ -65,20 +66,18 @@ func (ts *TopnSubmit) nextStatRange() (*StatRange, error) {
 		return nil, err
 	}
 
-	maxPosFinalized, exists, err := ts.DB.SubmitStore.MaxSubmissionIndexFinalized(block.Number.Uint64())
+	finalizedPos, exists, err := ts.DB.SubmitStore.MaxSubmissionIndexFinalized(block.Number.Uint64())
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, ErrMaxPosFinalizedNotSync
+		return nil, ErrFinalizedPosNotSynced
 	}
-
-	if maxPosFinalized < minPos {
+	if finalizedPos < minPos {
 		return nil, ErrMinPosNotFinalized
 	}
-	if maxPosFinalized < maxPos {
-		maxPos = maxPosFinalized
-	}
+
+	maxPos = math.MinUint64(finalizedPos, maxPos)
 
 	return &StatRange{minPos, maxPos}, nil
 }

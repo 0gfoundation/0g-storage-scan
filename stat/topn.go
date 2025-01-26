@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	ErrMaxPosFinalizedNotSync = errors.New("MaxPosFinalized not synced")
-	ErrMinPosNotFinalized     = errors.New("MinPos not finalized")
+	ErrMinPosNotSynced       = errors.New("MinPos not synced")
+	ErrMinPosNotFinalized    = errors.New("MinPos not finalized")
+	ErrFinalizedPosNotSynced = errors.New("FinalizedPos not synced")
 )
 
 type Topn[T any] interface {
@@ -36,7 +37,7 @@ func (as *AbsTopn[T]) DoStat(ctx context.Context, wg *sync.WaitGroup) {
 		}
 
 		if err != nil {
-			if !errors.Is(err, ErrMaxPosFinalizedNotSync) &&
+			if !errors.Is(err, ErrFinalizedPosNotSynced) &&
 				!errors.Is(err, ErrMinPosNotFinalized) {
 				logrus.WithError(err).Error("Acquire next stat ranges for stats")
 			}

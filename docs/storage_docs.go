@@ -1744,6 +1744,10 @@ const docTemplatestorage = `{
                 "totalReward": {
                     "description": "Total amount of miner reward",
                     "type": "number"
+                },
+                "totalWinCount": {
+                    "description": "Total win count",
+                    "type": "integer"
                 }
             }
         },
@@ -1879,6 +1883,10 @@ const docTemplatestorage = `{
                 "totalReward": {
                     "description": "Reward amount",
                     "type": "number"
+                },
+                "totalWinCount": {
+                    "description": "Win count",
+                    "type": "integer"
                 }
             }
         },

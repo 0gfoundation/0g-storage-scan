@@ -99,7 +99,7 @@ func (ts *StatSubmitExpired) nextStatRange() (*StatRange, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, ErrMaxPosFinalizedNotSync
+		return nil, ErrFinalizedPosNotSynced
 	}
 
 	if maxPosExpired < minPos {

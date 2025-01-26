@@ -110,9 +110,10 @@ func topnReward(c *gin.Context) (interface{}, error) {
 	list := make([]RewardTopn, 0)
 	for rank, m := range miners {
 		list = append(list, RewardTopn{
-			Rank:    rank + 1,
-			Address: m.Address,
-			Amount:  m.Amount,
+			Rank:     rank + 1,
+			Address:  m.Address,
+			Amount:   m.Amount,
+			WinCount: m.WinCount,
 		})
 	}
 

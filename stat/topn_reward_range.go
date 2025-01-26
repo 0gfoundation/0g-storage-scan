@@ -71,6 +71,7 @@ func (trr *TopnRewardRange) calculateStat(r TimeRange) error {
 			StatTime:  statTime,
 			AddressID: r.MinerID,
 			Amount:    r.Amount,
+			WinCount:  r.WinCount,
 		})
 	}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/Conflux-Chain/go-conflux-util/store/mysql"
 	set "github.com/deckarep/golang-set"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -228,13 +229,14 @@ func (ms *MysqlStore) Push(block *Block, decodedLogs *DecodedLogs) error {
 }
 
 func (ms *MysqlStore) Pop(block uint64) error {
-	maxBlock, ok, err := ms.MaxBlock()
+	maxBlock, ok, err := ms.BlockStore.MaxBlock()
 	if err != nil {
 		return errors.WithMessage(err, "failed to get max block")
 	}
 	if !ok || block > maxBlock {
 		return nil
 	}
+	logrus.Infof("Blockchain reorged at block %v", block)
 
 	start := time.Now()
 	defer metrics.Registry.Store.Pop().UpdateSince(start)
