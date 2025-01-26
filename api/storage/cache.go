@@ -157,14 +157,14 @@ func loadTopnSubmitsOverall(topnAddresses map[string]map[time.Duration][]store.T
 }
 
 func loadTopnRewardsOverall(topnMiners map[time.Duration][]store.TopnMiner) error {
-	value2, ok, err := db.ConfigStore.Get(store.StatTopnRewardHeap)
+	value, ok, err := db.ConfigStore.Get(store.StatTopnRewardHeap)
 	if err != nil {
 		return errors.WithMessagef(err, "Failed to load reward heap")
 	}
 
 	if ok {
 		var minerSlice []store.Miner
-		if err := json.Unmarshal([]byte(value2), &minerSlice); err != nil {
+		if err := json.Unmarshal([]byte(value), &minerSlice); err != nil {
 			return errors.WithMessage(err, "Failed to unmarshal reward heap")
 		}
 
@@ -180,8 +180,9 @@ func loadTopnRewardsOverall(topnMiners map[time.Duration][]store.TopnMiner) erro
 		miners := make([]store.TopnMiner, 0)
 		for _, miner := range minerSlice {
 			miners = append(miners, store.TopnMiner{
-				Address: addrMap[miner.ID].Address,
-				Amount:  miner.Amount,
+				Address:  addrMap[miner.ID].Address,
+				Amount:   miner.Amount,
+				WinCount: miner.WinCount,
 			})
 		}
 
@@ -240,6 +241,7 @@ func cacheMinerRewardStat() error {
 	cache.minerRewardStat = MinerRewardStat{
 		AvgReward24Hours: *avg,
 		TotalReward:      stat.RewardTotal,
+		TotalWinCount:    stat.WinCountTotal,
 	}
 
 	return nil

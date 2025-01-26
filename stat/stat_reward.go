@@ -96,7 +96,7 @@ func (sr *StatReward) statByTimeRange(start, end time.Time, statType string) (*s
 	}
 
 	// delta count
-	delta, err := sr.DB.RewardStore.Sum(start, end)
+	rewardDelta, winCountDelta, err := sr.DB.RewardStore.Stat(start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -115,17 +115,20 @@ func (sr *StatReward) statByTimeRange(start, end time.Time, statType string) (*s
 	}
 
 	if !exist {
-		total, err := sr.DB.RewardStore.Sum(time.Time{}, start)
+		rewardTotal, winCountTotal, err := sr.DB.RewardStore.Stat(time.Time{}, start)
 		if err != nil {
 			return nil, err
 		}
-		preStat.RewardTotal = *total
+		preStat.RewardTotal = *rewardTotal
+		preStat.WinCountTotal = *winCountTotal
 	}
 
 	return &store.RewardStat{
-		StatTime:    start,
-		StatType:    statType,
-		RewardNew:   *delta,
-		RewardTotal: preStat.RewardTotal.Add(*delta),
+		StatTime:      start,
+		StatType:      statType,
+		RewardNew:     *rewardDelta,
+		RewardTotal:   preStat.RewardTotal.Add(*rewardDelta),
+		WinCountNew:   *winCountDelta,
+		WinCountTotal: preStat.WinCountTotal + *winCountDelta,
 	}, nil
 }

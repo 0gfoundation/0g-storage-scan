@@ -180,7 +180,7 @@ func (s *CatchupSyncer) tryBlockRange(ctx context.Context) bool {
 }
 
 func (s *CatchupSyncer) updateBlockRange(ctx context.Context) error {
-	maxBlock, ok, err := s.db.MaxBlock()
+	maxBlock, ok, err := s.db.BlockStore.MaxBlock()
 	if err != nil {
 		return errors.WithMessage(err, "failed to get max block from db")
 	}

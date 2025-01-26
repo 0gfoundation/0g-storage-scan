@@ -3,12 +3,12 @@ package stat
 import (
 	"container/heap"
 	"encoding/json"
+	"gorm.io/gorm"
 	"strconv"
 	"sync"
 
-	"gorm.io/gorm"
-
 	"github.com/0glabs/0g-storage-scan/store"
+	"github.com/Conflux-Chain/go-conflux-util/math"
 	"github.com/openweb3/web3go"
 	"github.com/openweb3/web3go/types"
 	"github.com/pkg/errors"
@@ -16,6 +16,8 @@ import (
 )
 
 var (
+	ErrRewardsNotSynced = errors.New("Rewards not synced")
+
 	batchInBns = 1000
 	maxMiners  = 100
 )
@@ -63,14 +65,19 @@ func (tr *TopnReward) nextStatRange() (*StatRange, error) {
 	if err != nil {
 		return nil, err
 	}
-	maxPosFinalized := block.Number.Uint64()
 
-	if maxPosFinalized < minPos {
+	finalizedPos, exists, err := tr.DB.RewardStore.MaxBlockFinalized(block.Number.Uint64())
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, ErrFinalizedPosNotSynced
+	}
+	if finalizedPos < minPos {
 		return nil, ErrMinPosNotFinalized
 	}
-	if maxPosFinalized < maxPos {
-		maxPos = maxPosFinalized
-	}
+
+	maxPos = math.MinUint64(maxPos, finalizedPos)
 
 	return &StatRange{minPos, maxPos}, nil
 }
@@ -98,6 +105,7 @@ func (tr *TopnReward) calculateStat(r StatRange) error {
 			minersUpdate = append(minersUpdate, store.Miner{
 				ID:        reward.MinerID,
 				Amount:    m.Amount.Add(reward.Amount),
+				WinCount:  m.WinCount + reward.WinCount,
 				UpdatedAt: reward.UpdatedAt,
 			})
 		}
@@ -105,7 +113,7 @@ func (tr *TopnReward) calculateStat(r StatRange) error {
 
 	if err := tr.DB.DB.Transaction(func(dbTx *gorm.DB) error {
 		if len(minersUpdate) > 0 {
-			if err := tr.DB.MinerStore.BatchUpsert(dbTx, minersUpdate); err != nil { //TODO
+			if err := tr.DB.MinerStore.BatchUpsert(dbTx, minersUpdate); err != nil {
 				return errors.WithMessage(err, "Failed to batch update miners for topn")
 			}
 

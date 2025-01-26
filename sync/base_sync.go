@@ -305,7 +305,7 @@ func (s *baseSyncer) decodeReward(blkTime time.Time, log types.Log) (*store.Rewa
 		return nil, err
 	}
 
-	_, err = s.db.MinerStore.Add(minerID, blkTime, reward.Amount)
+	_, err = s.db.MinerStore.Add(minerID, blkTime)
 	if err != nil {
 		return nil, err
 	}

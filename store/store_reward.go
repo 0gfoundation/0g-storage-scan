@@ -79,6 +79,32 @@ func (rs *RewardStore) Sum(startTime, endTime time.Time) (*decimal.Decimal, erro
 	return &sum.Amount, nil
 }
 
+func (rs *RewardStore) Stat(startTime, endTime time.Time) (*decimal.Decimal, *uint64, error) {
+	nilTime := time.Time{}
+	if startTime == nilTime && endTime == nilTime {
+		return nil, nil, errors.New("At least provide one parameter for startTime and endTime")
+	}
+
+	db := rs.DB.Model(&Reward{}).Select(`IFNULL(sum(Amount), 0) as amount, count(*) as win_count`)
+	if startTime != nilTime {
+		db = db.Where("block_time >= ?", startTime)
+	}
+	if endTime != nilTime {
+		db = db.Where("block_time < ?", endTime)
+	}
+
+	var stat struct {
+		Amount   decimal.Decimal
+		WinCount uint64
+	}
+	err := db.Find(&stat).Error
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &stat.Amount, &stat.WinCount, nil
+}
+
 func (rs *RewardStore) Add(dbTx *gorm.DB, rewards []Reward) error {
 	return dbTx.CreateInBatches(rewards, batchSizeInsert).Error
 }
@@ -127,16 +153,31 @@ func (rs *RewardStore) CountActive(startTime, endTime time.Time) (uint64, error)
 	return uint64(countActive), nil
 }
 
+func (rs *RewardStore) MaxBlockFinalized(finalizedBN uint64) (uint64, bool, error) {
+	var reward Reward
+
+	result := rs.DB.Where("block_number <= ?", finalizedBN).Order("block_number desc").Limit(1).Find(&reward)
+	if result.Error != nil {
+		return 0, false, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return 0, false, nil
+	}
+
+	return reward.BlockNumber, true, nil
+}
+
 type GroupedReward struct {
 	MinerID   uint64
 	Amount    decimal.Decimal
+	WinCount  uint64
 	UpdatedAt time.Time
 }
 
 func (rs *RewardStore) GroupByMiner(minBn, maxBn uint64) ([]GroupedReward, error) {
 	groupedRewards := new([]GroupedReward)
 	err := rs.DB.Model(&Reward{}).
-		Select(`miner_id, IFNULL(sum(Amount), 0) amount, max(block_time) updated_at`).
+		Select(`miner_id, IFNULL(sum(Amount), 0) amount, count(*) win_count, max(block_time) updated_at`).
 		Where("block_number between ? and ?", minBn, maxBn).
 		Group("miner_id").
 		Scan(groupedRewards).Error
@@ -151,7 +192,7 @@ func (rs *RewardStore) GroupByMiner(minBn, maxBn uint64) ([]GroupedReward, error
 func (rs *RewardStore) GroupByMinerByTime(startBlockTime, endBlockTime time.Time) ([]GroupedReward, error) {
 	groupedRewards := new([]GroupedReward)
 	err := rs.DB.Model(&Reward{}).
-		Select(`miner_id, IFNULL(sum(Amount), 0) amount, max(block_time) updated_at`).
+		Select(`miner_id, IFNULL(sum(Amount), 0) amount, count(*) win_count, max(block_time) updated_at`).
 		Where("block_time >= ? and block_time < ?", startBlockTime, endBlockTime).
 		Group("miner_id").
 		Scan(groupedRewards).Error
@@ -192,11 +233,13 @@ func (rs *RewardStore) AvgRewardRecently(duration time.Duration) (*decimal.Decim
 }
 
 type RewardStat struct {
-	ID          uint64          `json:"-"`
-	StatType    string          `gorm:"size:4;not null;uniqueIndex:idx_statType_statTime,priority:1" json:"-"`
-	StatTime    time.Time       `gorm:"not null;uniqueIndex:idx_statType_statTime,priority:2" json:"statTime"`
-	RewardNew   decimal.Decimal `gorm:"type:decimal(65);not null;default:0" json:"rewardNew"`   // New reward
-	RewardTotal decimal.Decimal `gorm:"type:decimal(65);not null;default:0" json:"rewardTotal"` // Total reward
+	ID            uint64          `json:"-"`
+	StatType      string          `gorm:"size:4;not null;uniqueIndex:idx_statType_statTime,priority:1" json:"-"`
+	StatTime      time.Time       `gorm:"not null;uniqueIndex:idx_statType_statTime,priority:2" json:"statTime"`
+	RewardNew     decimal.Decimal `gorm:"type:decimal(65);not null;default:0" json:"rewardNew"`   // New reward
+	RewardTotal   decimal.Decimal `gorm:"type:decimal(65);not null;default:0" json:"rewardTotal"` // Total reward
+	WinCountNew   uint64          `gorm:"not null;default:0" json:"winCountNew"`                  // New win count
+	WinCountTotal uint64          `gorm:"not null;default:0" json:"winCountTotal"`                // Total win count
 }
 
 func (RewardStat) TableName() string {
@@ -267,6 +310,7 @@ type RewardTopnStat struct {
 	StatTime  time.Time       `gorm:"not null;uniqueIndex:idx_statTime_addressId,priority:1"`
 	AddressID uint64          `gorm:"not null;uniqueIndex:idx_statTime_addressId,priority:2"`
 	Amount    decimal.Decimal `gorm:"type:decimal(65);not null"`
+	WinCount  uint64          `gorm:"not null;default:0"`
 }
 
 func (RewardTopnStat) TableName() string {
@@ -293,22 +337,23 @@ func (t *RewardTopnStatStore) BatchDeltaUpsert(dbTx *gorm.DB, rewards []RewardTo
 	var params []interface{}
 	size := len(rewards)
 	for i, r := range rewards {
-		placeholders += "(?,?,?)"
+		placeholders += "(?,?,?,?)"
 		if i != size-1 {
 			placeholders += ",\n\t\t\t"
 		}
-		params = append(params, []interface{}{r.StatTime, r.AddressID, r.Amount}...)
+		params = append(params, []interface{}{r.StatTime, r.AddressID, r.Amount, r.WinCount}...)
 	}
 
 	sqlString := fmt.Sprintf(`
 		insert into 
-    		reward_topn_stats(stat_time, address_id, amount)
+    		reward_topn_stats(stat_time, address_id, amount, win_count)
 		values
 			%s
 		on duplicate key update
 			stat_time = values(stat_time),
 			address_id = values(address_id),                
-			amount = amount + values(amount)
+			amount = amount + values(amount),
+			win_count = win_count + values(win_count)
 	`, placeholders)
 
 	if err := db.Exec(sqlString, params...).Error; err != nil {
@@ -319,15 +364,18 @@ func (t *RewardTopnStatStore) BatchDeltaUpsert(dbTx *gorm.DB, rewards []RewardTo
 }
 
 type TopnMiner struct {
-	Address string
-	Amount  decimal.Decimal
+	Address  string
+	Amount   decimal.Decimal
+	WinCount uint64
 }
 
 func (t *RewardTopnStatStore) Topn(duration time.Duration, limit int) ([]TopnMiner, error) {
 	miners := new([]TopnMiner)
 
 	db := t.DB.Model(&RewardTopnStat{}).
-		Select(`addresses.address address, IFNULL(sum(reward_topn_stats.amount), 0) amount`).
+		Select(`addresses.address address, 
+			IFNULL(sum(reward_topn_stats.amount), 0) amount, 
+			IFNULL(sum(reward_topn_stats.win_count), 0) win_count`).
 		Joins("left join addresses on addresses.id = reward_topn_stats.address_id")
 
 	if duration != 0 {

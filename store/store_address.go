@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	nhContract "github.com/0glabs/0g-storage-scan/contract"
-
-	"github.com/openweb3/web3go/types"
-
 	"github.com/Conflux-Chain/go-conflux-util/store/mysql"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/openweb3/web3go/types"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -321,7 +318,8 @@ func (t *AddressStatStore) List(intervalType *string, minTimestamp, maxTimestamp
 type Miner struct {
 	ID              uint64
 	FirstMiningTime time.Time       `gorm:"not null"`
-	Amount          decimal.Decimal `gorm:"type:decimal(65);not null;index:idx_amount,sort:desc"`
+	Amount          decimal.Decimal `gorm:"type:decimal(65);not null;default:0;index:idx_amount,sort:desc"`
+	WinCount        uint64          `gorm:"not null;default:0"`
 	UpdatedAt       time.Time       `gorm:"not null;index:idx_updatedAt,sort:desc"`
 }
 
@@ -339,7 +337,7 @@ func newMinerStore(db *gorm.DB) *MinerStore {
 	}
 }
 
-func (ms *MinerStore) Add(id uint64, firstMiningTime time.Time, amount decimal.Decimal) (uint64, error) {
+func (ms *MinerStore) Add(id uint64, firstMiningTime time.Time) (uint64, error) {
 	var miner Miner
 	existed, err := ms.Store.Exists(&miner, "id = ?", id)
 	if err != nil {
@@ -352,7 +350,6 @@ func (ms *MinerStore) Add(id uint64, firstMiningTime time.Time, amount decimal.D
 	miner = Miner{
 		ID:              id,
 		FirstMiningTime: firstMiningTime,
-		Amount:          amount,
 		UpdatedAt:       firstMiningTime,
 	}
 
@@ -407,20 +404,21 @@ func (ms *MinerStore) BatchUpsert(dbTx *gorm.DB, miners []Miner) error {
 	var params []interface{}
 	size := len(miners)
 	for i, m := range miners {
-		placeholders += "(?,?,?,?)"
+		placeholders += "(?,?,?,?,?)"
 		if i != size-1 {
 			placeholders += ",\n\t\t\t"
 		}
-		params = append(params, []interface{}{m.ID, m.Amount, m.UpdatedAt, time.Now()}...)
+		params = append(params, []interface{}{m.ID, m.Amount, m.WinCount, m.UpdatedAt, time.Now()}...)
 	}
 
 	sql := fmt.Sprintf(`
 		insert into 
-    		miners(id, amount, updated_at, first_mining_time)
+    		miners(id, amount, win_count, updated_at, first_mining_time)
 		values
 			%s
 		on duplicate key update
 			amount = values(amount),
+			win_count = values(win_count),             
 			updated_at = values(updated_at)
 	`, placeholders)
 
