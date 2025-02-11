@@ -11,12 +11,12 @@ import (
 )
 
 func listMiners(c *gin.Context) (interface{}, error) {
-	var param PageParam
+	var param listMinerParam
 	if err := c.ShouldBind(&param); err != nil {
 		return nil, api.ErrValidation(errors.New("Invalid page param"))
 	}
 
-	total, miners, err := db.MinerStore.List(param.isDesc(), param.Skip, param.Limit)
+	total, miners, err := db.MinerStore.List(param.isDesc(), param.SortField, param.Skip, param.Limit)
 	if err != nil {
 		return nil, scanApi.ErrDatabase(errors.WithMessage(err, "Failed to get miner list"))
 	}

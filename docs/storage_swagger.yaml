@@ -694,6 +694,23 @@ paths:
         minimum: 1
         name: limit
         type: integer
+      - default: desc
+        description: Sort in ASC or DESC order by timestamp(or relevant field)
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort
+        type: string
+      - default: latest_update_time
+        description: The field used for sorting. The value is latest_update_time or
+          total_reward
+        enum:
+        - latest_update_time
+        - total_reward
+        in: query
+        name: sortField
+        type: string
       produces:
       - application/json
       responses:

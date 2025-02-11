@@ -297,10 +297,12 @@ func getTxHandler(c *gin.Context) {
 //	@Tags			miner reward
 //	@Accept			json
 //	@Produce		json
-//	@Param			skip	query		int	false	"The number of skipped records, usually it's pageSize * (pageNumber - 1)"	minimum(0)	default(0)
-//	@Param			limit	query		int	false	"The number of records displayed on the page"								minimum(1)	maximum(100)	default(10)
-//	@Success		200		{object}	api.BusinessError{Data=MinerList}
-//	@Failure		600		{object}	api.BusinessError
+//	@Param			skip		query		int		false	"The number of skipped records, usually it's pageSize * (pageNumber - 1)"		minimum(0)								default(0)
+//	@Param			limit		query		int		false	"The number of records displayed on the page"									minimum(1)								maximum(100)	default(10)
+//	@Param			sort		query		string	false	"Sort in ASC or DESC order by timestamp(or relevant field)"						Enums(asc, desc)						default(desc)
+//	@Param			sortField	query		string	false	"The field used for sorting. The value is latest_update_time or total_reward"	Enums(latest_update_time, total_reward)	default(latest_update_time)
+//	@Success		200			{object}	api.BusinessError{Data=MinerList}
+//	@Failure		600			{object}	api.BusinessError
 //	@Router			/miners [get]
 func listMinersHandler(c *gin.Context) {
 	api.Wrap(listMiners)(c)

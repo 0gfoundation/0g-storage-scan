@@ -25,6 +25,11 @@ type listStorageTxParam struct {
 	MaxTimestamp *int    `form:"maxTimestamp" binding:"omitempty,number"`
 }
 
+type listMinerParam struct {
+	PageParam
+	SortField string `form:"sortField,default=latest_update_time" binding:"omitempty,oneof=latest_update_time total_reward"`
+}
+
 type statParam struct {
 	PageParam
 	MinTimestamp *int   `form:"minTimestamp" binding:"omitempty,number"`

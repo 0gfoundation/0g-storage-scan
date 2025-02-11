@@ -431,14 +431,21 @@ func (ms *MinerStore) BatchUpsert(dbTx *gorm.DB, miners []Miner) error {
 	return nil
 }
 
-func (ms *MinerStore) List(idDesc bool, skip, limit int) (int64, []Miner, error) {
+func (ms *MinerStore) List(idDesc bool, sortField string, skip, limit int) (int64, []Miner, error) {
 	dbRaw := ms.DB.Model(&Miner{})
+
+	var field string
+	if sortField == "latest_update_time" {
+		field = "updated_at"
+	} else {
+		field = "amount"
+	}
 
 	var orderBy string
 	if idDesc {
-		orderBy = "updated_at DESC"
+		orderBy = fmt.Sprintf("%s DESC", field)
 	} else {
-		orderBy = "updated_at ASC"
+		orderBy = fmt.Sprintf("%s ASC", field)
 	}
 
 	list := new([]Miner)
