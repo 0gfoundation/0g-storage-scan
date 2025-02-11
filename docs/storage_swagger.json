@@ -176,6 +176,28 @@
                         "description": "The number of records displayed on the page",
                         "name": "limit",
                         "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort in ASC or DESC order by timestamp(or relevant field)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "latest_update_time",
+                            "total_reward"
+                        ],
+                        "type": "string",
+                        "default": "latest_update_time",
+                        "description": "The field used for sorting. The value is latest_update_time or total_reward",
+                        "name": "sortField",
+                        "in": "query"
                     }
                 ],
                 "responses": {
