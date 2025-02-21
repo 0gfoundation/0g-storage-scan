@@ -76,8 +76,10 @@ logFilterParam:
     newEpochEventSignature: 0xfbdb91bfb20161df2476c3c873d04c9200564c7f77e14dae0b679813cb332961
   # Reward contract info configurations
   reward:
+    # Old distribute reward event signature
+    distributeRewardEventSignatureOld: 0x83617a1b0f847971f005bd162dde513cfe93df96e6293c3bbb5fe9c40629dd4c
     # Distribute reward event signature
-    distributeRewardEventSignature: 0x83617a1b0f847971f005bd162dde513cfe93df96e6293c3bbb5fe9c40629dd4c
+    distributeRewardEventSignature: 0xf099de0c527342bff1397d08daae31c3de66104f48886094fbe9126a21ebf4b0
   # Mining contract info configurations
   mine:
     # Miner register event signature
