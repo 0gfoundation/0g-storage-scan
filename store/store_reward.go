@@ -22,6 +22,24 @@ type Reward struct {
 	Amount       decimal.Decimal `gorm:"type:decimal(65);not null"`
 }
 
+func NewRewardOld(blockTime time.Time, log types.Log, filter *nhContract.OnePoolRewardOldFilterer) (*Reward, error) {
+	distributeReward, err := filter.ParseDistributeReward(*log.ToEthLog())
+	if err != nil {
+		return nil, err
+	}
+
+	reward := &Reward{
+		PricingIndex: distributeReward.PricingIndex.Uint64(),
+		Miner:        distributeReward.Beneficiary.String(),
+		Amount:       decimal.NewFromBigInt(distributeReward.Amount, 0),
+		BlockNumber:  log.BlockNumber,
+		BlockTime:    blockTime,
+		TxHash:       log.TxHash.String(),
+	}
+
+	return reward, nil
+}
+
 func NewReward(blockTime time.Time, log types.Log, filter *nhContract.OnePoolRewardFilterer) (*Reward, error) {
 	distributeReward, err := filter.ParseDistributeReward(*log.ToEthLog())
 	if err != nil {

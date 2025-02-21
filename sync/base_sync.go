@@ -27,6 +27,7 @@ type baseSyncer struct {
 	flowSubmitSig         string
 	flowNewEpochSig       string
 	rewardAddr            string
+	rewardSigOld          string
 	rewardSig             string
 	mineAddr              string
 	minerRegSig           string
@@ -69,6 +70,7 @@ func (s *baseSyncer) mustInitLogFilterParam() {
 
 	s.flowSubmitSig = cfg.Flow.SubmitEventSignature
 	s.flowNewEpochSig = cfg.Flow.NewEpochEventSignature
+	s.rewardSigOld = cfg.Reward.DistributeRewardEventSignatureOld
 	s.rewardSig = cfg.Reward.DistributeRewardEventSignature
 	s.minerRegSig = cfg.Mine.NewMinerIdEventSignature
 	s.minerUpdateSig = cfg.Mine.UpdateMinerIdEventSignature
@@ -77,6 +79,7 @@ func (s *baseSyncer) mustInitLogFilterParam() {
 	s.topics = append(s.topics, []common.Hash{
 		common.HexToHash(cfg.Flow.SubmitEventSignature),
 		common.HexToHash(cfg.Flow.NewEpochEventSignature),
+		common.HexToHash(cfg.Reward.DistributeRewardEventSignatureOld),
 		common.HexToHash(cfg.Reward.DistributeRewardEventSignature),
 		common.HexToHash(cfg.Mine.NewMinerIdEventSignature),
 		common.HexToHash(cfg.Mine.UpdateMinerIdEventSignature),
@@ -287,17 +290,28 @@ func (s *baseSyncer) decodeFlowEpoch(blkTime time.Time, log types.Log) (*store.F
 	return flowEpoch, nil
 }
 
-// TODO check if register miner id exists
 func (s *baseSyncer) decodeReward(blkTime time.Time, log types.Log) (*store.Reward, error) {
 	addr := log.Address.String()
 	sig := log.Topics[0].String()
-	if !strings.EqualFold(addr, s.rewardAddr) || sig != s.rewardSig {
+	if !strings.EqualFold(addr, s.rewardAddr) || (sig != s.rewardSig && sig != s.rewardSigOld) {
 		return nil, nil
 	}
 
-	reward, err := store.NewReward(blkTime, log, nhContract.DummyRewardFilterer())
-	if err != nil {
-		return nil, err
+	var reward *store.Reward
+	var err error
+	switch sig {
+	case s.rewardSigOld:
+		reward, err = store.NewRewardOld(blkTime, log, nhContract.DummyRewardOldFilterer())
+		if err != nil {
+			return nil, err
+		}
+	case s.rewardSig:
+		reward, err = store.NewReward(blkTime, log, nhContract.DummyRewardFilterer())
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.Errorf("Faild to decode reward, sig %v", sig)
 	}
 
 	minerID, err := s.db.AddressStore.Add(reward.Miner, blkTime)
@@ -500,7 +514,7 @@ func (s *baseSyncer) convertLogs(logs []types.Log, bn2TimeMap map[uint64]uint64)
 			if flowEpoch != nil {
 				decodedLogs.FlowEpochs = append(decodedLogs.FlowEpochs, *flowEpoch)
 			}
-		case s.rewardSig:
+		case s.rewardSig, s.rewardSigOld:
 			reward, err := s.decodeReward(blockTime, log)
 			if err != nil {
 				return nil, err
@@ -606,12 +620,11 @@ type flowConfig struct {
 }
 
 type rewardConfig struct {
-	//Address                        string
-	DistributeRewardEventSignature string
+	DistributeRewardEventSignatureOld string
+	DistributeRewardEventSignature    string
 }
 
 type mineConfig struct {
-	//Address                     string
 	NewMinerIdEventSignature    string
 	UpdateMinerIdEventSignature string
 }

@@ -8,6 +8,7 @@ import (
 
 var (
 	flowFilterer       *contract.FlowFilterer
+	rewardOldFilterer  *OnePoolRewardOldFilterer
 	rewardFilterer     *OnePoolRewardFilterer
 	mineFilterer       *PoraMineFilterer
 	daSignersFilterer  *DASignersFilterer
@@ -16,6 +17,7 @@ var (
 
 func init() {
 	flowFilterer, _ = contract.NewFlowFilterer(common.HexToAddress(""), nil)
+	rewardOldFilterer, _ = NewOnePoolRewardOldFilterer(common.HexToAddress(""), nil)
 	rewardFilterer, _ = NewOnePoolRewardFilterer(common.HexToAddress(""), nil)
 	mineFilterer, _ = NewPoraMineFilterer(common.HexToAddress(""), nil)
 	daSignersFilterer, _ = NewDASignersFilterer(common.HexToAddress(""), nil)
@@ -24,6 +26,10 @@ func init() {
 
 func DummyFlowFilterer() *contract.FlowFilterer {
 	return flowFilterer
+}
+
+func DummyRewardOldFilterer() *OnePoolRewardOldFilterer {
+	return rewardOldFilterer
 }
 
 func DummyRewardFilterer() *OnePoolRewardFilterer {
