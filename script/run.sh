@@ -39,16 +39,16 @@ fi
 echo "<===Repo pulled successfully."
 
 echo "===>Start to build image..."
-docker-compose build --no-cache || exit 1
+docker compose build --no-cache || exit 1
 echo "<===Images built successfully. "
 
 echo "===>Start to launch services..."
-docker-compose up --force-recreate -d sync
-docker-compose up --force-recreate -d stat
+docker compose up --force-recreate -d sync
+docker compose up --force-recreate -d stat
 echo "DA_API_ENABLE: $DA_API_ENABLE"
 if [ "$DA_API_ENABLE" -ne 1 ]; then
-  docker-compose up --force-recreate -d api
+  docker compose up --force-recreate -d api
 else
-  docker-compose up --force-recreate -d da_api
+  docker compose up --force-recreate -d da_api
 fi
 echo "<===Services launched successfully."
