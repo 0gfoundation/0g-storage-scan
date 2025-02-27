@@ -66,6 +66,9 @@ func (s *baseSyncer) mustInitLogFilterParam() {
 	}
 
 	s.flowAddr = cfg.Flow.Address
+	if s.flowAddr == "" {
+		logrus.Fatal("No flow contract address configured")
+	}
 	s.mustInitAddresses()
 
 	s.flowSubmitSig = cfg.Flow.SubmitEventSignature
