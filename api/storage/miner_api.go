@@ -37,9 +37,14 @@ func convertMiners(total int64, miners []store.Miner) (*MinerList, error) {
 	minerList := make([]Miner, 0)
 	for _, m := range miners {
 		miner := Miner{
-			Miner:       addrMap[m.ID].Address,
-			TotalReward: m.Amount,
-			Timestamp:   m.UpdatedAt.Unix(),
+			Miner:          addrMap[m.ID].Address,
+			TotalReward:    m.Amount,
+			WinCount:       m.WinCount,
+			MiningAttempts: m.MiningAttempts,
+			Timestamp:      m.UpdatedAt.Unix(),
+		}
+		if miner.WinCount > miner.MiningAttempts {
+			miner.MiningAttempts = miner.WinCount
 		}
 		minerList = append(minerList, miner)
 	}

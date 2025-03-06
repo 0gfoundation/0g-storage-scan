@@ -67,6 +67,7 @@ func (ss *StorageSyncer) LatestFiles(ctx context.Context, ticker *time.Ticker) {
 	submits, err := ss.db.SubmitStore.QueryDesc(BatchGetSubmitsLatest)
 	if err != nil {
 		ticker.Reset(intervalException)
+		return
 	}
 
 	if len(submits) == 0 {

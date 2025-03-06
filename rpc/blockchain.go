@@ -162,6 +162,21 @@ func BatchGetLogs(w3c *web3go.Client, blockFrom, blockTo uint64, addresses []com
 
 func BatchGetBlockTimes(ctx context.Context, w3c *web3go.Client, blkNums []types.BlockNumber,
 	batchSize uint64) (map[uint64]uint64, error) {
+	blockNum2Block, err := BatchGetBlocks(ctx, w3c, blkNums, false, batchSize)
+	if err != nil {
+		return nil, err
+	}
+
+	blockNum2Time := make(map[uint64]uint64)
+	for _, block := range blockNum2Block {
+		blockNum2Time[block.Number.Uint64()] = block.Timestamp
+	}
+
+	return blockNum2Time, nil
+}
+
+func BatchGetBlocks(ctx context.Context, w3c *web3go.Client, blkNums []types.BlockNumber, withDetail bool,
+	batchSize uint64) (map[uint64]types.Block, error) {
 	if len(blkNums) == 0 {
 		return nil, errors.New("no block numbers")
 	}
@@ -171,7 +186,7 @@ func BatchGetBlockTimes(ctx context.Context, w3c *web3go.Client, blkNums []types
 		blkNumSet.Add(num)
 	}
 
-	blockNum2Time := make(map[uint64]uint64)
+	blockNum2Block := make(map[uint64]types.Block)
 	blkNumSlice := blkNumSet.ToSlice()
 	blkNumSize := len(blkNumSlice)
 	for i := 0; i < blkNumSize; i += int(batchSize) {
@@ -185,7 +200,7 @@ func BatchGetBlockTimes(ctx context.Context, w3c *web3go.Client, blkNums []types
 		for _, blkNum := range blockNums {
 			elem := rpc.BatchElem{
 				Method: "eth_getBlockByNumber",
-				Args:   []interface{}{blkNum, false},
+				Args:   []interface{}{blkNum, withDetail},
 				Result: new(types.Block),
 			}
 			batch = append(batch, elem)
@@ -198,11 +213,11 @@ func BatchGetBlockTimes(ctx context.Context, w3c *web3go.Client, blkNums []types
 
 		for _, elem := range batch {
 			block := elem.Result.(*types.Block)
-			blockNum2Time[block.Number.Uint64()] = block.Timestamp
+			blockNum2Block[block.Number.Uint64()] = *block
 		}
 	}
 
-	return blockNum2Time, nil
+	return blockNum2Block, nil
 }
 
 type AlertContent struct {

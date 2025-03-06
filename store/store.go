@@ -91,8 +91,9 @@ type DecodedLogs struct {
 }
 
 func (dl *DecodedLogs) Len() int {
-	return len(dl.Submits) + len(dl.Rewards) + len(dl.DASigners) + len(dl.DASignersWithSocketUpdated) +
-		len(dl.DASubmits) + len(dl.DASubmitsWithVerified) + len(dl.DARewards)
+	return len(dl.Submits) + +len(dl.FlowEpochs) + len(dl.Rewards) + len(dl.MinerRegisters) +
+		len(dl.DASigners) + len(dl.DASignersWithSocketUpdated) + len(dl.DASubmits) +
+		len(dl.DASubmitsWithVerified) + len(dl.DARewards)
 }
 
 func (ms *MysqlStore) Push(block *Block, decodedLogs *DecodedLogs) error {

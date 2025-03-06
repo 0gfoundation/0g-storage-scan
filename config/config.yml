@@ -36,34 +36,8 @@ storage:
   # Alert channel
   # alertChannel: tgRobot
 
-## Blockchain sync configurations
-#sync:
-#  # The block number from which to sync flow submit
-#  blockWhenFlowCreated: 0
-#  # To avoid pivot switch frequently, skip some blocks ahead of the latest block
-#  # delayBlocksAgainstLatest: 30
-#  # The number of blocks to query at a time during catchup, 0 means no limit
-#  # batchBlocksOnCatchup: 0
-#  # The number of blocks to query at a batch all
-#  # batchBlocksOnBatchCall: 1000
-#  # The number of txs to query at a batch all
-#  # batchTxsOnBatchCall: 1000
-
-# Charge info configurations
-# When charging in ERC20 token, configure `erc20TokenAddress` and `erc20TransferEventSignature`
-# When charging in native token, configure `symbol` and `decimals`
-charge:
-  # Charge in ERC20 token address
-  # erc20TokenAddress: 0x7d682e65efc5c13bf4e394b8f376c48e6bae0355
-  # ERC20 transfer event signature
-  # erc20TransferEventSignature: 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
-  # Token symbol
-  symbol: A0GI
-  # Token decimals
-  decimals: 18
-
 # storage contracts info configurations
-logFilterParam:
+contract:
   # Whether to sync data from storage node
   enabled: true
   # Flow contract info configurations
@@ -82,13 +56,15 @@ logFilterParam:
     distributeRewardEventSignature: 0xf099de0c527342bff1397d08daae31c3de66104f48886094fbe9126a21ebf4b0
   # Mining contract info configurations
   mine:
+    # Miner submit answer signature
+    submitMethodSignature: "0xae722e82"
     # Miner register event signature
     newMinerIdEventSignature: 0xbfeb006f16aca8eb3d9953cf44db6b11b6f3041a313875dfa18f2e9d71bd309e
     # Update miner id event signature
     updateMinerIdEventSignature: 0x9a26a8e7fd42c501b452c02016def8048e3ea28c2bf15127a9b5e2029d989bf1
 
 ## DA contracts info configurations
-#logFilterParamDA:
+#contractDA:
 #  # Whether to sync data from DA node
 #  enabled: false
 #  # DAEntrance contract info configurations
@@ -110,21 +86,36 @@ logFilterParam:
 #    # Socket updated event signature
 #    socketUpdatedSignature: 0x09617a966176a40f8f1410768b118506db0096484acd5811064fcc12038798de
 
-## MySQL database configurations
-#store:
-#  mysql:
-#    host: :3306
-#    username:
-#    password:
-#    database:
-#    # connMaxLifeTime: 3m
-#    # maxOpenConns: 10
-#    # maxIdleConns: 10
+## Charge info configurations
+## When charging in ERC20 token, configure `erc20TokenAddress` and `erc20TransferEventSignature`
+## When charging in native token, configure `symbol` and `decimals`
+#charge:
+#  # Charge in ERC20 token address
+#  erc20TokenAddress: 0x7d682e65efc5c13bf4e394b8f376c48e6bae0355
+#  # ERC20 transfer event signature
+#  erc20TransferEventSignature: 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+#  # Token symbol
+#  symbol: A0GI
+#  # Token decimals
+#  decimals: 18
+
+## Blockchain sync configurations
+#sync:
+#  # The block number from which to sync flow submit
+#  # blockWhenFlowCreated: 0
+#  # To avoid pivot switch frequently, skip some blocks ahead of the latest block
+#  # delayBlocksAgainstLatest: 3
+#  # The number of blocks to query at a time during catchup, 0 means no limit
+#  # batchBlocksOnCatchup: 0
+#  # The number of blocks to query at a batch all
+#  # batchBlocksOnBatchCall: 1000
+#  # The number of txs to query at a batch all
+#  # batchTxsOnBatchCall: 1000
 
 ## Data statistics configurations
 #stat:
 #  # The block number from which to stat
-#  blockOnStatBegin: 0
+#  # blockOnStatBegin: 0
 #  # The minimum interval for submit stat
 #  # minStatIntervalSubmit: 10m
 #  # The minimum interval for address stat
@@ -139,6 +130,17 @@ logFilterParam:
 #  # minStatIntervalDAClient: 10m
 #  # The minimum interval for DA signer stat
 #  # minStatIntervalDASigner: 10m
+
+## MySQL database configurations
+#store:
+#  mysql:
+#    host: :3306
+#    username:
+#    password:
+#    database:
+#    # connMaxLifeTime: 3m
+#    # maxOpenConns: 10
+#    # maxIdleConns: 10
 
 # Api configurations
 api:

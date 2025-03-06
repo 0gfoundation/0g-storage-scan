@@ -95,13 +95,14 @@ func (s *Syncer) Sync(ctx context.Context, wg *sync.WaitGroup) {
 		logrus.WithError(err).Panic("Failed to check reorg data")
 	}
 
+	go s.storageSyncer.Sync(ctx, s.storageSyncer.LatestFiles)
+	go s.storageSyncer.Sync(ctx, s.storageSyncer.NodeSyncHeight)
+	go s.patchSyncer.Sync(ctx, s.patchSyncer.L1Txs)
+	go s.patchSyncer.Sync(ctx, s.patchSyncer.MinerAttempts)
+
 	s.catchupSyncer.Sync(ctx)
 	s.currentBlock = s.catchupSyncer.finalizedBlock + 1
 	logrus.WithField("block", s.catchupSyncer.finalizedBlock).Info("Catchup syncer done")
-
-	go s.storageSyncer.Sync(ctx, s.storageSyncer.LatestFiles)
-	go s.storageSyncer.Sync(ctx, s.storageSyncer.NodeSyncHeight)
-	go s.patchSyncer.Sync(ctx)
 
 	ticker := time.NewTicker(s.syncIntervalCatchUp)
 	defer ticker.Stop()
