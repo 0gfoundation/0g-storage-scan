@@ -33,7 +33,7 @@ func startSyncService(*cobra.Command, []string) {
 
 	cs := nhSync.MustNewCatchupSyncer(dataCtx.Eth, dataCtx.DB, conf, dataCtx.EthCfg.AlertChannel, dataCtx.EthCfg.HealthReport)
 	ss := nhSync.MustNewStorageSyncer(dataCtx.DB, dataCtx.StorageConfig, dataCtx.StorageConfig.AlertChannel, dataCtx.StorageConfig.HealthReport)
-	ps := nhSync.MustNewPatchSyncer(dataCtx.Eth, dataCtx.DB)
+	ps := nhSync.MustNewPatchSyncer(dataCtx.Eth, dataCtx.DB, conf)
 	syncer := nhSync.MustNewSyncer(dataCtx.Eth, dataCtx.DB, conf, cs, ss, ps)
 
 	ctx, cancel := context.WithCancel(context.Background())

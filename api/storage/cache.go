@@ -180,6 +180,7 @@ func loadTopnRewardsOverall(topnMiners map[time.Duration][]store.TopnMiner) erro
 		miners := make([]store.TopnMiner, 0)
 		for _, miner := range minerSlice {
 			miners = append(miners, store.TopnMiner{
+				ID:       miner.ID,
 				Address:  addrMap[miner.ID].Address,
 				Amount:   miner.Amount,
 				WinCount: miner.WinCount,

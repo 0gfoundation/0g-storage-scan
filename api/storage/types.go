@@ -261,9 +261,11 @@ type MinerList struct {
 // Miner model info
 // @Description Miner information
 type Miner struct {
-	Miner       string          `json:"miner"`       // Miner address
-	TotalReward decimal.Decimal `json:"totalReward"` // The total reward amount
-	Timestamp   int64           `json:"timestamp"`   // The block time when the latest reward event emits
+	Miner          string          `json:"miner"`          // Miner address
+	TotalReward    decimal.Decimal `json:"totalReward"`    // The total reward amount
+	WinCount       uint64          `json:"winCount"`       // Win count
+	MiningAttempts uint64          `json:"miningAttempts"` // Mining attempts
+	Timestamp      int64           `json:"timestamp"`      // The block time when the latest reward event emits
 }
 
 type AddressInfo struct {
@@ -330,10 +332,11 @@ type FilesTopn struct {
 // RewardTopn model info
 // @Description Reward topn information
 type RewardTopn struct {
-	Rank     int             `json:"rank"`          // Data ranking
-	Address  string          `json:"miner"`         // Address on blockchain
-	Amount   decimal.Decimal `json:"totalReward"`   // Reward amount
-	WinCount uint64          `json:"totalWinCount"` // Win count
+	Rank           int             `json:"rank"`           // Data ranking
+	Address        string          `json:"miner"`          // Address on blockchain
+	Amount         decimal.Decimal `json:"totalReward"`    // Reward amount
+	WinCount       uint64          `json:"winCount"`       // Win count
+	MiningAttempts uint64          `json:"miningAttempts"` // Mining attempts
 }
 
 // DataTopnList model info

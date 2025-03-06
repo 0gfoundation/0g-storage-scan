@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/0glabs/0g-storage-scan/api/middlewares/rate"
@@ -20,8 +21,9 @@ const (
 
 	FileExpireSeconds = "file.expire.seconds"
 
-	SyncHeightNode    = "sync.height.node"
-	SyncPatchSubmitId = "sync.patch.submit.id"
+	SyncHeightNode           = "sync.height.node"
+	SyncPatchL1TxSubmitId    = "sync.patch.l1tx.submit.id"
+	SyncPatchMinerAttemptsBn = "sync.patch.miner.attempts.bn"
 
 	StatTopnSubmitId        = "stat.topn.submit.id"
 	StatTopnSubmitHeap      = "stat.topn.submit.heap"
@@ -130,6 +132,24 @@ func (cs *ConfigStore) BatchGet(names []string) (map[string]Config, error) {
 	}
 
 	return m, nil
+}
+
+func (cs *ConfigStore) GetUint64(cfgKey string) (uint64, bool, error) {
+	value, exists, err := cs.Get(cfgKey)
+	if err != nil {
+		return 0, false, errors.WithMessagef(err, "Fail to get config %s", cfgKey)
+	}
+
+	if !exists {
+		return 0, exists, nil
+	}
+
+	val, err := strconv.ParseUint(value, 10, 64)
+	if err != nil {
+		return 0, exists, errors.WithMessagef(err, "Fail to parse config %s", cfgKey)
+	}
+
+	return val, exists, nil
 }
 
 func (cs *ConfigStore) LoadRateLimitConfigs() (*rate.Config, error) {

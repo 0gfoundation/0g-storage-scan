@@ -37,8 +37,8 @@ func MustInit(store *store.MysqlStore, client *web3go.Client, storageCfg rpc.Sto
 
 	var charge struct {
 		Erc20TokenAddress string
-		Symbol            string
-		Decimals          uint8
+		Symbol            string `default:"A0GI"`
+		Decimals          uint8  `default:"18"`
 	}
 	viperUtil.MustUnmarshalKey("charge", &charge)
 

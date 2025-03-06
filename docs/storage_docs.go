@@ -1693,6 +1693,10 @@ const docTemplatestorage = `{
                     "description": "Miner address",
                     "type": "string"
                 },
+                "miningAttempts": {
+                    "description": "Mining attempts",
+                    "type": "integer"
+                },
                 "timestamp": {
                     "description": "The block time when the latest reward event emits",
                     "type": "integer"
@@ -1700,6 +1704,10 @@ const docTemplatestorage = `{
                 "totalReward": {
                     "description": "The total reward amount",
                     "type": "number"
+                },
+                "winCount": {
+                    "description": "Win count",
+                    "type": "integer"
                 }
             }
         },
@@ -1876,6 +1884,10 @@ const docTemplatestorage = `{
                     "description": "Address on blockchain",
                     "type": "string"
                 },
+                "miningAttempts": {
+                    "description": "Mining attempts",
+                    "type": "integer"
+                },
                 "rank": {
                     "description": "Data ranking",
                     "type": "integer"
@@ -1884,7 +1896,7 @@ const docTemplatestorage = `{
                     "description": "Reward amount",
                     "type": "number"
                 },
-                "totalWinCount": {
+                "winCount": {
                     "description": "Win count",
                     "type": "integer"
                 }

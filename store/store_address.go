@@ -320,6 +320,7 @@ type Miner struct {
 	FirstMiningTime time.Time       `gorm:"not null"`
 	Amount          decimal.Decimal `gorm:"type:decimal(65);not null;default:0;index:idx_amount,sort:desc"`
 	WinCount        uint64          `gorm:"not null;default:0"`
+	MiningAttempts  uint64          `gorm:"not null;default:0"`
 	UpdatedAt       time.Time       `gorm:"not null;index:idx_updatedAt,sort:desc"`
 }
 
@@ -420,6 +421,39 @@ func (ms *MinerStore) BatchUpsert(dbTx *gorm.DB, miners []Miner) error {
 			amount = values(amount),
 			win_count = values(win_count),             
 			updated_at = values(updated_at)
+	`, placeholders)
+
+	if err := db.Exec(sql, params...).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ms *MinerStore) BatchDeltaUpsertMiningAttempts(dbTx *gorm.DB, miners []Miner) error {
+	db := ms.DB
+	if dbTx != nil {
+		db = dbTx
+	}
+
+	var placeholders string
+	var params []interface{}
+	size := len(miners)
+	for i, m := range miners {
+		placeholders += "(?,?,?,?)"
+		if i != size-1 {
+			placeholders += ",\n\t\t\t"
+		}
+		params = append(params, []interface{}{m.ID, m.MiningAttempts, time.Now(), time.Now()}...)
+	}
+
+	sql := fmt.Sprintf(`
+		insert into 
+    		miners(id, mining_attempts, first_mining_time, updated_at)
+		values
+			%s
+		on duplicate key update
+			mining_attempts = mining_attempts + values(mining_attempts)
 	`, placeholders)
 
 	if err := db.Exec(sql, params...).Error; err != nil {
@@ -545,7 +579,7 @@ func (t *MinerStatStore) List(intervalType *string, minTimestamp, maxTimestamp *
 
 type MinerRegister struct {
 	ID              uint64
-	RegisterMinerID string `gorm:"size:66;not null"`
+	RegisterMinerID string `gorm:"size:66;not null;index:idx_minerID"`
 	Address         string `gorm:"-"`
 	AddressID       uint64 `gorm:"not null"`
 	PreAddress      string `gorm:"-"`
@@ -615,4 +649,17 @@ func (mrs *MinerRegisterStore) Add(dbTx *gorm.DB, registers []MinerRegister) err
 
 func (mrs *MinerRegisterStore) Pop(dbTx *gorm.DB, block uint64) error {
 	return dbTx.Where("block_number >= ?", block).Delete(&MinerRegister{}).Error
+}
+
+func (mrs *MinerRegisterStore) GetByMinerID(minerID string, blockNumber uint64) (MinerRegister, bool, error) {
+	var minerRegister MinerRegister
+	err := mrs.Store.DB.Where("register_miner_id = ? and block_number <= ?", minerID, blockNumber).
+		Order("block_number desc").First(&minerRegister).Error
+	if err == nil {
+		return minerRegister, true, nil
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return minerRegister, false, nil
+	}
+	return minerRegister, false, err
 }

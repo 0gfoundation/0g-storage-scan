@@ -57,6 +57,20 @@ func (bs *BlockStore) MaxBlock() (uint64, bool, error) {
 	return uint64(maxBlock.Int64), true, nil
 }
 
+func (bs *BlockStore) MaxBlockFinalized(finalizedBN uint64) (uint64, bool, error) {
+	var block Block
+
+	result := bs.DB.Where("block_number <= ?", finalizedBN).Order("block_number desc").Limit(1).Find(&block)
+	if result.Error != nil {
+		return 0, false, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return 0, false, nil
+	}
+
+	return block.BlockNumber, true, nil
+}
+
 func (bs *BlockStore) BlockHash(blockNumber uint64) (string, bool, error) {
 	var blk Block
 

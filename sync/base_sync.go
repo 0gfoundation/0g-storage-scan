@@ -23,16 +23,16 @@ type baseSyncer struct {
 	sdk  *web3go.Client
 	db   *store.MysqlStore
 
-	flowAddr              string
-	flowSubmitSig         string
-	flowNewEpochSig       string
-	rewardAddr            string
-	rewardSigOld          string
-	rewardSig             string
-	mineAddr              string
-	minerRegSig           string
-	minerUpdateSig        string
-	minerNewSubmissionSig string
+	flowAddr        string
+	flowSubmitSig   string
+	flowNewEpochSig string
+	rewardAddr      string
+	rewardSigOld    string
+	rewardSig       string
+	mineAddr        string
+	minerRegSig     string
+	minerUpdateSig  string
+	minerSubmitSig  string
 
 	daEntranceAddr    string
 	dataUploadSig     string
@@ -50,16 +50,16 @@ type baseSyncer struct {
 }
 
 func (s *baseSyncer) mustInit() {
-	s.mustInitLogFilterParam()
-	s.mustInitLogFilterParamDA()
+	s.mustInitContract()
+	s.mustInitContractDA()
 
 	s.mustInitPricePerSector()
 	s.mustInitExpireInSec()
 }
 
-func (s *baseSyncer) mustInitLogFilterParam() {
-	var cfg logFilterParamConfig
-	viperUtil.MustUnmarshalKey("logFilterParam", &cfg)
+func (s *baseSyncer) mustInitContract() {
+	var cfg contractConfig
+	viperUtil.MustUnmarshalKey("contract", &cfg)
 
 	if !cfg.Enabled {
 		return
@@ -77,6 +77,7 @@ func (s *baseSyncer) mustInitLogFilterParam() {
 	s.rewardSig = cfg.Reward.DistributeRewardEventSignature
 	s.minerRegSig = cfg.Mine.NewMinerIdEventSignature
 	s.minerUpdateSig = cfg.Mine.UpdateMinerIdEventSignature
+	s.minerSubmitSig = cfg.Mine.SubmitMethodSignature
 
 	s.topics = make([][]common.Hash, 0)
 	s.topics = append(s.topics, []common.Hash{
@@ -90,37 +91,9 @@ func (s *baseSyncer) mustInitLogFilterParam() {
 }
 
 func (s *baseSyncer) mustInitAddresses() {
-	ethClient, _ := s.sdk.ToClientForContract()
-
-	flowContract, err := contract.NewFlow(common.HexToAddress(s.flowAddr), ethClient)
-	if err != nil {
-		logrus.WithError(err).Fatal("Failed to instantiate flow contract")
-	}
-	marketAddress, err := flowContract.Market(nil)
-	if err != nil {
-		logrus.WithError(err).Fatal("Failed to get market contract address")
-	}
-
-	marketContract, err := contract.NewMarket(marketAddress, ethClient)
-	if err != nil {
-		logrus.WithError(err).Fatal("Failed to instantiate market contract")
-	}
-	rewardAddress, err := marketContract.Reward(nil)
-	if err != nil {
-		logrus.WithError(err).Fatal("Failed to get reward contract address")
-	}
-
-	rewardContract, err := nhContract.NewChunkLinearReward(rewardAddress, ethClient)
-	if err != nil {
-		logrus.WithError(err).Fatal("Failed to instantiate Reward contract")
-	}
-	mineAddress, err := rewardContract.Mine(nil)
-	if err != nil {
-		logrus.WithError(err).Fatal("Failed to get mine contract address")
-	}
-
-	s.rewardAddr = rewardAddress.String()
-	s.mineAddr = mineAddress.String()
+	rewardAddr, mineAddr := MustGetContractAddresses(s.sdk, s.flowAddr)
+	s.rewardAddr = rewardAddr
+	s.mineAddr = mineAddr
 
 	s.addresses = make([]common.Address, 0)
 	s.addresses = append(s.addresses, []common.Address{
@@ -130,12 +103,16 @@ func (s *baseSyncer) mustInitAddresses() {
 	}...)
 }
 
-func (s *baseSyncer) mustInitLogFilterParamDA() {
-	var cfg logFilterParamDAConfig
-	viperUtil.MustUnmarshalKey("logFilterParamDA", &cfg)
+func (s *baseSyncer) mustInitContractDA() {
+	var cfg contractDAConfig
+	viperUtil.MustUnmarshalKey("contractDA", &cfg)
 
 	if !cfg.Enabled {
 		return
+	}
+
+	if cfg.DAEntrance.Address == "" || cfg.DASigners.Address == "" {
+		logrus.Fatal("No DAEntrance or DASigners contract address configured")
 	}
 
 	s.daEntranceAddr = cfg.DAEntrance.Address
@@ -152,13 +129,13 @@ func (s *baseSyncer) mustInitLogFilterParamDA() {
 		common.HexToAddress(cfg.DASigners.Address),
 	}...)
 
-	s.topics = append(s.topics, []common.Hash{
+	s.topics[0] = append(s.topics[0], []common.Hash{
 		common.HexToHash(cfg.DAEntrance.DataUploadSignature),
 		common.HexToHash(cfg.DAEntrance.ErasureCommitmentVerifiedSignature),
 		common.HexToHash(cfg.DAEntrance.DARewardSignature),
 		common.HexToHash(cfg.DASigners.NewSignerSignature),
 		common.HexToHash(cfg.DASigners.SocketUpdatedSignature),
-	})
+	}...)
 }
 
 func (s *baseSyncer) mustInitPricePerSector() {
@@ -609,7 +586,41 @@ func (s *baseSyncer) findClosedInterval(input string, regStr string) (uint64, ui
 	return start, end, nil
 }
 
-type logFilterParamConfig struct {
+func MustGetContractAddresses(sdk *web3go.Client, flowAddr string) (rewardAddr, mineAddr string) {
+	ethClient, _ := sdk.ToClientForContract()
+	flowContract, err := contract.NewFlow(common.HexToAddress(flowAddr), ethClient)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to instantiate flow contract")
+	}
+	marketAddress, err := flowContract.Market(nil)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to get market contract address")
+	}
+
+	marketContract, err := contract.NewMarket(marketAddress, ethClient)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to instantiate market contract")
+	}
+	rewardAddress, err := marketContract.Reward(nil)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to get reward contract address")
+	}
+
+	rewardContract, err := nhContract.NewChunkLinearReward(rewardAddress, ethClient)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to instantiate Reward contract")
+	}
+	mineAddress, err := rewardContract.Mine(nil)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to get mine contract address")
+	}
+
+	rewardAddr = rewardAddress.String()
+	mineAddr = mineAddress.String()
+	return
+}
+
+type contractConfig struct {
 	Enabled bool
 	Flow    flowConfig
 	Reward  rewardConfig
@@ -628,11 +639,12 @@ type rewardConfig struct {
 }
 
 type mineConfig struct {
+	SubmitMethodSignature       string
 	NewMinerIdEventSignature    string
 	UpdateMinerIdEventSignature string
 }
 
-type logFilterParamDAConfig struct {
+type contractDAConfig struct {
 	Enabled    bool
 	DAEntrance daEntranceConfig
 	DASigners  daSignersConfig

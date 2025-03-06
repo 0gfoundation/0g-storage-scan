@@ -3,7 +3,6 @@ package stat
 import (
 	"container/heap"
 	"encoding/json"
-	"gorm.io/gorm"
 	"strconv"
 	"sync"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/openweb3/web3go/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 var (

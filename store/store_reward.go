@@ -382,6 +382,7 @@ func (t *RewardTopnStatStore) BatchDeltaUpsert(dbTx *gorm.DB, rewards []RewardTo
 }
 
 type TopnMiner struct {
+	ID       uint64
 	Address  string
 	Amount   decimal.Decimal
 	WinCount uint64
@@ -391,7 +392,8 @@ func (t *RewardTopnStatStore) Topn(duration time.Duration, limit int) ([]TopnMin
 	miners := new([]TopnMiner)
 
 	db := t.DB.Model(&RewardTopnStat{}).
-		Select(`addresses.address address, 
+		Select(`addresses.id id,
+			addresses.address address, 
 			IFNULL(sum(reward_topn_stats.amount), 0) amount, 
 			IFNULL(sum(reward_topn_stats.win_count), 0) win_count`).
 		Joins("left join addresses on addresses.id = reward_topn_stats.address_id")

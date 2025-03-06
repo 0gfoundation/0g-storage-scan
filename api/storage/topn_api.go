@@ -107,14 +107,28 @@ func topnReward(c *gin.Context) (interface{}, error) {
 		return map[string]interface{}{"list": []RewardTopn{}}, nil
 	}
 
+	addrIDs := make([]uint64, 0)
+	for _, miner := range miners {
+		addrIDs = append(addrIDs, miner.ID)
+	}
+	minerMap, err := db.BatchGetMiners(addrIDs)
+	if err != nil {
+		return nil, errors.WithMessage(err, "Failed to batch get miners")
+	}
+
 	list := make([]RewardTopn, 0)
 	for rank, m := range miners {
-		list = append(list, RewardTopn{
-			Rank:     rank + 1,
-			Address:  m.Address,
-			Amount:   m.Amount,
-			WinCount: m.WinCount,
-		})
+		reward := RewardTopn{
+			Rank:           rank + 1,
+			Address:        m.Address,
+			Amount:         m.Amount,
+			WinCount:       m.WinCount,
+			MiningAttempts: minerMap[m.ID].MiningAttempts,
+		}
+		if reward.WinCount > reward.MiningAttempts {
+			reward.MiningAttempts = reward.WinCount
+		}
+		list = append(list, reward)
 	}
 
 	return map[string]interface{}{"list": list}, nil
