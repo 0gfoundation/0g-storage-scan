@@ -56,14 +56,14 @@ func getDATx(c *gin.Context) (interface{}, error) {
 		return nil, scanApi.ErrDatabase(errors.WithMessage(err, "Failed to get da submit"))
 	}
 	if !exist {
-		return nil, api.ErrInternal(errors.Errorf("No matching DA-submit record found, blockNumber %v epoch %v quorumID %v dataRoot %v",
+		return nil, scanApi.ErrNoMatchingRecordFound(errors.Errorf("da submit(blockNumber %v epoch %v quorumID %v dataRoot %v)",
 			blockNumber, epoch, quorumID, dataRoot))
 	}
 
 	addrIDs := []uint64{submit.SenderID}
 	addrMap, err := db.BatchGetAddresses(addrIDs)
 	if err != nil {
-		return nil, scanApi.ErrBatchGetAddress(err)
+		return nil, scanApi.ErrDatabase(err)
 	}
 
 	var status uint8
@@ -94,7 +94,7 @@ func convertDATxs(total int64, submits []store.DASubmit) (*DATxList, error) {
 	}
 	addrMap, err := db.BatchGetAddresses(addrIDs)
 	if err != nil {
-		return nil, scanApi.ErrBatchGetAddress(err)
+		return nil, scanApi.ErrDatabase(err)
 	}
 
 	daTxs := make([]DATxInfo, 0)

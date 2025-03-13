@@ -37,7 +37,7 @@ func convertDARewards(total int64, rewards []store.DAReward) (*RewardList, error
 	}
 	addrMap, err := db.BatchGetAddresses(addrIDs)
 	if err != nil {
-		return nil, scanApi.ErrBatchGetAddress(err)
+		return nil, scanApi.ErrDatabase(err)
 	}
 
 	daRewards := make([]Reward, 0)

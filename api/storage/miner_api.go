@@ -31,7 +31,7 @@ func convertMiners(total int64, miners []store.Miner) (*MinerList, error) {
 	}
 	addrMap, err := db.BatchGetAddresses(addrIDs)
 	if err != nil {
-		return nil, scanApi.ErrBatchGetAddress(err)
+		return nil, scanApi.ErrDatabase(err)
 	}
 
 	minerList := make([]Miner, 0)
