@@ -47,13 +47,13 @@ func getStorageTx(c *gin.Context) (interface{}, error) {
 		return nil, scanApi.ErrDatabase(errors.WithMessage(err, "Failed to get submit list"))
 	}
 	if !exist {
-		return nil, api.ErrInternal(errors.Errorf("No matching submit record found, txSeq %v", txSeq))
+		return nil, scanApi.ErrNoMatchingRecordFound(errors.Errorf("submit(txSeq %v)", txSeq))
 	}
 
 	addrIDs := []uint64{submit.SenderID}
 	addrMap, err := db.BatchGetAddresses(addrIDs)
 	if err != nil {
-		return nil, scanApi.ErrBatchGetAddress(err)
+		return nil, scanApi.ErrDatabase(err)
 	}
 
 	submits, err := refreshFileInfos([]store.Submit{submit})
@@ -83,7 +83,7 @@ func getStorageTx(c *gin.Context) (interface{}, error) {
 
 	var extra store.SubmitExtra
 	if err := json.Unmarshal(submit.Extra, &extra); err != nil {
-		return nil, api.ErrInternal(errors.New("Failed to unmarshal submit extra"))
+		return nil, scanApi.ErrUnmarshalValue(errors.New("submit extra"))
 	}
 
 	result.StartPosition = extra.StartPos.Uint64()
@@ -195,7 +195,7 @@ func convertStorageTxs(total int64, submits []store.Submit) (*StorageTxList, err
 	}
 	addrMap, err := db.BatchGetAddresses(addrIDs)
 	if err != nil {
-		return nil, scanApi.ErrBatchGetAddress(err)
+		return nil, scanApi.ErrDatabase(err)
 	}
 
 	storageTxs := make([]*StorageTxInfo, 0)

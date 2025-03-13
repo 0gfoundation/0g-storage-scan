@@ -1,23 +1,33 @@
 package api
 
 import (
-	"github.com/pkg/errors"
+	"github.com/Conflux-Chain/go-conflux-util/api"
 )
 
-// Unexpected system error, e.g. database error, blockchain rpc error, io error. Http status is 600
+const (
+	ErrCodeDatabase              = 4
+	ErrCodeBlockchainRPC         = 5
+	ErrCodeStorageNodeRPC        = 6
+	ErrCodeNoMatchingRecordFound = 7
+	ErrCodeUnmarshalValue        = 8
+)
+
+func ErrDatabase(err error) error {
+	return api.NewBusinessError(ErrCodeDatabase, "Database exception", err.Error())
+}
 
 func ErrBlockchainRPC(err error) error {
-	return errors.WithMessage(err, "Blockchain RPC exception")
+	return api.NewBusinessError(ErrCodeBlockchainRPC, "Blockchain RPC exception", err.Error())
 }
 
 func ErrStorageNodeRPC(err error) error {
-	return errors.WithMessage(err, "Storage node RPC exception")
+	return api.NewBusinessError(ErrCodeStorageNodeRPC, "Storage node RPC exception", err.Error())
 }
 
-func ErrDatabase(err error) error {
-	return errors.WithMessage(err, "Database exception")
+func ErrNoMatchingRecordFound(err error) error {
+	return api.NewBusinessError(ErrCodeNoMatchingRecordFound, "No matching record found", err.Error())
 }
 
-func ErrBatchGetAddress(err error) error {
-	return ErrDatabase(errors.WithMessage(err, "Failed to batch get addresses' info"))
+func ErrUnmarshalValue(err error) error {
+	return api.NewBusinessError(ErrCodeUnmarshalValue, "Failed to unmarshal value", err.Error())
 }

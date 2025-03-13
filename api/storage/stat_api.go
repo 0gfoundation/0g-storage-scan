@@ -177,7 +177,7 @@ func summary(_ *gin.Context) (interface{}, error) {
 		return nil, scanApi.ErrDatabase(errors.WithMessage(err, "Failed to get the latest submit stat"))
 	}
 	if submitStat == nil {
-		return nil, api.ErrInternal(errors.New("No matching record found(storage fee stat)"))
+		return nil, scanApi.ErrNoMatchingRecordFound(errors.New("storage fee stat"))
 	}
 
 	totalExpiredFiles, err := loadConfigValue(store.StatFileExpiredTotal)
@@ -213,15 +213,15 @@ func summary(_ *gin.Context) (interface{}, error) {
 func loadConfigValue(configName string) (uint64, error) {
 	value, exist, err := db.ConfigStore.Get(configName)
 	if err != nil {
-		return 0, scanApi.ErrDatabase(errors.WithMessagef(err, "Failed to get value(%s)", configName))
+		return 0, scanApi.ErrDatabase(errors.WithMessagef(err, "Failed to get config(%s)", configName))
 	}
 	if !exist {
-		return 0, api.ErrInternal(errors.Errorf("No matching record found(%s)", configName))
+		return 0, scanApi.ErrNoMatchingRecordFound(errors.Errorf("config(%s)", configName))
 	}
 
 	configValue, err := strconv.ParseUint(value, 10, 64)
 	if err != nil {
-		return 0, api.ErrInternal(errors.Errorf("Failed to parse value(%s)", configName))
+		return 0, scanApi.ErrUnmarshalValue(errors.Errorf("config(%s)", configName))
 	}
 
 	return configValue, nil

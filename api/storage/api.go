@@ -478,7 +478,7 @@ func getAddressInfo(c *gin.Context) (*store.Address, error) {
 		return nil, scanApi.ErrDatabase(errors.WithMessagef(err, "Failed to get address info %v", addr))
 	}
 	if !exist {
-		return nil, api.ErrInternal(errors.Errorf("No matching record found(address %v)", addr))
+		return nil, scanApi.ErrNoMatchingRecordFound(errors.Errorf("address(%v)", addr))
 	}
 
 	return &addrInfo, nil
