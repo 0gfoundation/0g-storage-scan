@@ -38,6 +38,9 @@ func (s *StatSubmitPruned) mustLoadTotalPrunedFiles() {
 		logrus.WithError(err).Fatal("Failed to get total pruned files from DB")
 	}
 	if !exist {
+		if err := s.db.ConfigStore.Upsert(nil, store.StatFilePrunedTotal, "0"); err != nil {
+			logrus.WithError(err).Fatal("Failed to init total pruned files to DB")
+		}
 		s.filePrunedTotal = uint64(0)
 		return
 	}

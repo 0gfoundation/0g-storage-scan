@@ -70,6 +70,9 @@ func (ts *StatSubmitExpired) mustLoadTotalExpiredFiles() {
 		logrus.WithError(err).Fatal("Failed to get total expired files from DB")
 	}
 	if !exist {
+		if err := ts.DB.ConfigStore.Upsert(nil, store.StatFileExpiredTotal, "0"); err != nil {
+			logrus.WithError(err).Fatal("Failed to init total expired files to DB")
+		}
 		ts.fileExpiredTotal = uint64(0)
 		return
 	}
