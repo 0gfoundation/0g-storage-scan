@@ -212,6 +212,10 @@ func BatchGetBlocks(ctx context.Context, w3c *web3go.Client, blkNums []types.Blo
 		}
 
 		for _, elem := range batch {
+			err := elem.Error
+			if err != nil {
+				return nil, err
+			}
 			block := elem.Result.(*types.Block)
 			blockNum2Block[block.Number.Uint64()] = *block
 		}
