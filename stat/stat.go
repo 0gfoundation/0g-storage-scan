@@ -235,3 +235,13 @@ func defaultRangeStart(sdk *web3go.Client) (time.Time, error) {
 
 	return rangeStart, nil
 }
+
+func maxTopnSpan() time.Duration {
+	var maxDur time.Duration
+	for _, d := range store.TopnSpanTypes {
+		if d > maxDur {
+			maxDur = d
+		}
+	}
+	return maxDur
+}

@@ -20,6 +20,12 @@ const (
 	batchSizeInsert = 100
 )
 
+var TopnSpanTypes = map[string]time.Duration{
+	"24h": time.Hour * 24,
+	"3d":  time.Hour * 24 * 3,
+	"7d":  time.Hour * 24 * 7,
+}
+
 type MysqlStore struct {
 	*mysql.Store
 	*AddressStore
