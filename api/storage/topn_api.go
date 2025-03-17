@@ -1,8 +1,7 @@
 package storage
 
 import (
-	"time"
-
+	"github.com/0glabs/0g-storage-scan/store"
 	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -15,14 +14,6 @@ const (
 	filesTopn      = "files"
 
 	maxRecords = 100
-)
-
-var (
-	spanTypes = map[string]time.Duration{
-		"24h": time.Hour * 24,
-		"3d":  time.Hour * 24 * 3,
-		"7d":  time.Hour * 24 * 7,
-	}
 )
 
 func topnDataSize(c *gin.Context) (interface{}, error) {
@@ -47,7 +38,7 @@ func topnByType(c *gin.Context, t string) (interface{}, error) {
 		return nil, api.ErrValidation(errors.Errorf("Invalid topn query param"))
 	}
 
-	statSpan := spanTypes[topnP.SpanType]
+	statSpan := store.TopnSpanTypes[topnP.SpanType]
 	records := cache.topnAddresses[t][statSpan]
 
 	result := make(map[string]interface{})
@@ -101,7 +92,7 @@ func topnReward(c *gin.Context) (interface{}, error) {
 		return nil, api.ErrValidation(errors.Errorf("Invalid topn query param"))
 	}
 
-	statSpan := spanTypes[topnP.SpanType]
+	statSpan := store.TopnSpanTypes[topnP.SpanType]
 	miners := cache.topnMiners[statSpan]
 	if len(miners) == 0 {
 		return map[string]interface{}{"list": []RewardTopn{}}, nil

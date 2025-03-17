@@ -63,7 +63,7 @@ func ScheduleCache(ctx context.Context, wg *sync.WaitGroup) {
 
 func cacheTopn() error {
 	statSpan := make([]time.Duration, 0)
-	for _, duration := range spanTypes {
+	for _, duration := range store.TopnSpanTypes {
 		statSpan = append(statSpan, duration)
 	}
 

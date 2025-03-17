@@ -47,7 +47,12 @@ func (trr *TopnRewardRange) nextTimeRange() (*TimeRange, error) {
 		}
 		nextRangeStart = lastStatTime.Add(store.Intervals[trr.statType])
 	} else {
-		nextRangeStart = trr.StartTime
+		startTime := time.Now().Add(-maxTopnSpan())
+		if trr.StartTime.Before(startTime) {
+			nextRangeStart = startTime
+		} else {
+			nextRangeStart = trr.StartTime
+		}
 	}
 
 	timeRange, err := trr.calStatRange(nextRangeStart, store.Intervals[trr.statType])
