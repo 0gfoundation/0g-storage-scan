@@ -582,6 +582,31 @@ type TopnAddress struct {
 }
 
 func (t *SubmitTopnStatStore) Topn(field string, duration time.Duration, limit int) ([]TopnAddress, error) {
+	addressesTopn := new([]TopnAddress)
+	sqlTopn := fmt.Sprintf(`
+			SELECT
+	        a.address, s.data_size, s.storage_fee, s.txs, s.files
+			FROM
+			(
+				SELECT
+					address_id,
+					IFNULL(sum(data_size), 0) data_size,
+					IFNULL(sum(storage_fee), 0) storage_fee,
+					IFNULL(sum(txs), 0) txs,
+					IFNULL(sum(files), 0) files
+				FROM submit_topn_stats
+				WHERE stat_time >= ?
+				GROUP BY address_id
+			) s
+			LEFT JOIN addresses a ON s.address_id = a.id
+			ORDER BY ? DESC
+			LIMIT ?
+	    `)
+	if err := t.DB.Debug().Raw(sqlTopn, time.Now().Add(-duration), fmt.Sprintf("s.%s", field), limit).
+		Scan(addressesTopn).Error; err != nil {
+		return nil, err
+	}
+
 	addresses := new([]TopnAddress)
 
 	db := t.DB.Model(&SubmitTopnStat{}).
