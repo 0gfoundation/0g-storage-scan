@@ -582,7 +582,8 @@ type TopnAddress struct {
 }
 
 func (t *SubmitTopnStatStore) Topn(field string, duration time.Duration, limit int) ([]TopnAddress, error) {
-	addressesTopn := new([]TopnAddress)
+	addresses := new([]TopnAddress)
+
 	sqlTopn := fmt.Sprintf(`
 			SELECT
 	        a.address, s.data_size, s.storage_fee, s.txs, s.files
@@ -602,28 +603,8 @@ func (t *SubmitTopnStatStore) Topn(field string, duration time.Duration, limit i
 			ORDER BY ? DESC
 			LIMIT ?
 	    `)
+
 	if err := t.DB.Debug().Raw(sqlTopn, time.Now().Add(-duration), fmt.Sprintf("s.%s", field), limit).
-		Scan(addressesTopn).Error; err != nil {
-		return nil, err
-	}
-
-	addresses := new([]TopnAddress)
-
-	db := t.DB.Model(&SubmitTopnStat{}).
-		Select(`addresses.address address,
-		IFNULL(sum(submit_topn_stats.data_size), 0) data_size, 
-		IFNULL(sum(submit_topn_stats.storage_fee), 0) storage_fee, 
-		IFNULL(sum(submit_topn_stats.txs), 0) txs, 
-		IFNULL(sum(submit_topn_stats.files), 0) files`).
-		Joins("left join addresses on addresses.id = submit_topn_stats.address_id")
-
-	if duration != 0 {
-		db = db.Where("submit_topn_stats.stat_time >= ?", time.Now().Add(-duration))
-	}
-
-	if err := db.Group("submit_topn_stats.address_id").
-		Order(fmt.Sprintf("%s DESC", field)).
-		Limit(limit).
 		Scan(addresses).Error; err != nil {
 		return nil, err
 	}
