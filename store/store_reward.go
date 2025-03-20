@@ -389,6 +389,29 @@ type TopnMiner struct {
 }
 
 func (t *RewardTopnStatStore) Topn(duration time.Duration, limit int) ([]TopnMiner, error) {
+	minersTopn := new([]TopnMiner)
+	sqlTopn := fmt.Sprintf(`
+			SELECT
+	        a.id, a.address, s.amount, s.win_count
+			FROM
+			(
+				SELECT
+					address_id,
+					IFNULL(sum(amount), 0) amount,
+					IFNULL(sum(win_count), 0) win_count
+				FROM reward_topn_stats
+				WHERE stat_time >= ?
+				GROUP BY address_id
+			) s
+			LEFT JOIN addresses a ON s.address_id = a.id
+			ORDER BY amount DESC
+			LIMIT ?
+	    `)
+	if err := t.DB.Debug().Raw(sqlTopn, time.Now().Add(-duration), limit).
+		Scan(minersTopn).Error; err != nil {
+		return nil, err
+	}
+
 	miners := new([]TopnMiner)
 
 	db := t.DB.Model(&RewardTopnStat{}).
@@ -402,7 +425,7 @@ func (t *RewardTopnStatStore) Topn(duration time.Duration, limit int) ([]TopnMin
 		db = db.Where("reward_topn_stats.stat_time >= ?", time.Now().Add(-duration))
 	}
 
-	if err := db.Debug().Group("reward_topn_stats.address_id").
+	if err := db.Group("reward_topn_stats.address_id").
 		Order("amount DESC").
 		Limit(limit).
 		Scan(miners).Error; err != nil {
