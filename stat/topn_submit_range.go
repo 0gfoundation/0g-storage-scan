@@ -12,6 +12,7 @@ import (
 type TopnSubmitRange struct {
 	*BaseStat
 	statType string
+	maxSpan  time.Duration
 }
 
 func MustNewTopnSubmitRange(cfg *StatConfig, db *store.MysqlStore, sdk *web3go.Client, startTime time.Time) *AbsStat {
@@ -25,6 +26,7 @@ func MustNewTopnSubmitRange(cfg *StatConfig, db *store.MysqlStore, sdk *web3go.C
 	topnSubmitRange := &TopnSubmitRange{
 		BaseStat: baseStat,
 		statType: baseStat.Config.MinTopnIntervalSubmit,
+		maxSpan:  maxTopnSpan(),
 	}
 
 	return &AbsStat{
@@ -47,7 +49,7 @@ func (tsr *TopnSubmitRange) nextTimeRange() (*TimeRange, error) {
 		}
 		nextRangeStart = lastStatTime.Add(store.Intervals[tsr.statType])
 	} else {
-		startTime := time.Now().Add(-maxTopnSpan())
+		startTime := time.Now().Add(-tsr.maxSpan)
 		if tsr.StartTime.Before(startTime) {
 			nextRangeStart = startTime
 		} else {
@@ -88,6 +90,13 @@ func (tsr *TopnSubmitRange) calculateStat(r TimeRange) error {
 				return errors.WithMessage(err, "failed to batch delta upsert submits")
 			}
 		}
+
+		minTime := time.Now().Add(-tsr.maxSpan)
+		err := tsr.DB.SubmitTopnStatStore.Del(dbTx, minTime)
+		if err != nil {
+			return err
+		}
+
 		if err := tsr.DB.ConfigStore.Upsert(dbTx, store.StatTopnSubmitTime, r.start.Format(time.RFC3339)); err != nil {
 			return err
 		}

@@ -381,6 +381,14 @@ func (t *RewardTopnStatStore) BatchDeltaUpsert(dbTx *gorm.DB, rewards []RewardTo
 	return nil
 }
 
+func (t *RewardTopnStatStore) Del(dbTx *gorm.DB, minTime time.Time) error {
+	db := t.DB
+	if dbTx != nil {
+		db = dbTx
+	}
+	return db.Where("stat_time < ?", minTime).Delete(&RewardTopnStat{}).Error
+}
+
 type TopnMiner struct {
 	ID       uint64
 	Address  string
@@ -391,21 +399,25 @@ type TopnMiner struct {
 func (t *RewardTopnStatStore) Topn(duration time.Duration, limit int) ([]TopnMiner, error) {
 	miners := new([]TopnMiner)
 
-	db := t.DB.Model(&RewardTopnStat{}).
-		Select(`addresses.id id,
-			addresses.address address, 
-			IFNULL(sum(reward_topn_stats.amount), 0) amount, 
-			IFNULL(sum(reward_topn_stats.win_count), 0) win_count`).
-		Joins("left join addresses on addresses.id = reward_topn_stats.address_id")
+	sqlTopn := fmt.Sprintf(`
+			SELECT
+	        a.id, a.address, s.amount, s.win_count
+			FROM
+			(
+				SELECT
+					address_id,
+					IFNULL(sum(amount), 0) amount,
+					IFNULL(sum(win_count), 0) win_count
+				FROM reward_topn_stats
+				WHERE stat_time >= ?
+				GROUP BY address_id
+				ORDER BY amount DESC
+				LIMIT ?
+			) s
+			LEFT JOIN addresses a ON s.address_id = a.id
+	    `)
 
-	if duration != 0 {
-		db = db.Where("reward_topn_stats.stat_time >= ?", time.Now().Add(-duration))
-	}
-
-	if err := db.Group("reward_topn_stats.address_id").
-		Order("amount DESC").
-		Limit(limit).
-		Scan(miners).Error; err != nil {
+	if err := t.DB.Raw(sqlTopn, time.Now().Add(-duration), limit).Scan(miners).Error; err != nil {
 		return nil, err
 	}
 
