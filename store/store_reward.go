@@ -402,7 +402,7 @@ func (t *RewardTopnStatStore) Topn(duration time.Duration, limit int) ([]TopnMin
 		db = db.Where("reward_topn_stats.stat_time >= ?", time.Now().Add(-duration))
 	}
 
-	if err := db.Group("reward_topn_stats.address_id").
+	if err := db.Debug().Group("reward_topn_stats.address_id").
 		Order("amount DESC").
 		Limit(limit).
 		Scan(miners).Error; err != nil {
