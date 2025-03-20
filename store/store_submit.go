@@ -604,7 +604,7 @@ func (t *SubmitTopnStatStore) Topn(field string, duration time.Duration, limit i
 			LIMIT ?
 	    `)
 
-	if err := t.DB.Debug().Raw(sqlTopn, time.Now().Add(-duration), fmt.Sprintf("s.%s", field), limit).
+	if err := t.DB.Raw(sqlTopn, time.Now().Add(-duration), fmt.Sprintf("s.%s", field), limit).
 		Scan(addresses).Error; err != nil {
 		return nil, err
 	}
