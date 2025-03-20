@@ -12,6 +12,7 @@ import (
 type TopnRewardRange struct {
 	*BaseStat
 	statType string
+	maxSpan  time.Duration
 }
 
 func MustNewTopnRewardRange(cfg *StatConfig, db *store.MysqlStore, sdk *web3go.Client, startTime time.Time) *AbsStat {
@@ -25,6 +26,7 @@ func MustNewTopnRewardRange(cfg *StatConfig, db *store.MysqlStore, sdk *web3go.C
 	topnRewardRange := &TopnRewardRange{
 		BaseStat: baseStat,
 		statType: baseStat.Config.MinTopnIntervalReward,
+		maxSpan:  maxTopnSpan(),
 	}
 
 	return &AbsStat{
@@ -47,7 +49,7 @@ func (trr *TopnRewardRange) nextTimeRange() (*TimeRange, error) {
 		}
 		nextRangeStart = lastStatTime.Add(store.Intervals[trr.statType])
 	} else {
-		startTime := time.Now().Add(-maxTopnSpan())
+		startTime := time.Now().Add(-trr.maxSpan)
 		if trr.StartTime.Before(startTime) {
 			nextRangeStart = startTime
 		} else {
@@ -86,6 +88,13 @@ func (trr *TopnRewardRange) calculateStat(r TimeRange) error {
 				return errors.WithMessage(err, "failed to batch delta upsert rewards")
 			}
 		}
+
+		minTime := time.Now().Add(-trr.maxSpan)
+		err := trr.DB.RewardTopnStatStore.Del(dbTx, minTime)
+		if err != nil {
+			return err
+		}
+
 		if err := trr.DB.ConfigStore.Upsert(dbTx, store.StatTopnRewardTime, r.start.Format(time.RFC3339)); err != nil {
 			return err
 		}
