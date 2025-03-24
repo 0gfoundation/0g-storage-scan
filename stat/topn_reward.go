@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/0glabs/0g-storage-scan/rpc"
 	"github.com/0glabs/0g-storage-scan/store"
 	"github.com/Conflux-Chain/go-conflux-util/math"
 	"github.com/openweb3/web3go"
@@ -61,7 +62,7 @@ func (tr *TopnReward) nextStatRange() (*StatRange, error) {
 	minPos := tr.currentPos
 	maxPos := tr.currentPos + uint64(batchInBns) - 1
 
-	block, err := tr.Sdk.Eth.BlockByNumber(types.FinalizedBlockNumber, false)
+	block, err := rpc.GetBlockByNumber(tr.Sdk, types.FinalizedBlockNumber, false)
 	if err != nil {
 		return nil, err
 	}

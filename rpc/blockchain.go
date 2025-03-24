@@ -45,12 +45,9 @@ func GetEthDataByReceipts(w3c *web3go.Client, blockNumber uint64) (*EthData, err
 
 func getEthDataByReceipts(w3c *web3go.Client, blockNumber uint64) (*EthData, error) {
 	// get block
-	block, err := w3c.Eth.BlockByNumber(types.BlockNumber(blockNumber), true)
+	block, err := GetBlockByNumber(w3c, types.BlockNumber(blockNumber), true)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "failed to get block by number %v", blockNumber)
-	}
-	if block == nil {
-		return nil, nil
+		return nil, err
 	}
 
 	// batch get receipts
@@ -103,12 +100,9 @@ func GetEthDataByLogs(w3c *web3go.Client, blockNumber uint64, addresses []common
 
 func getEthDataByLogs(w3c *web3go.Client, blockNumber uint64, addresses []common.Address, topics [][]common.Hash) (*EthData, error) {
 	// get block
-	block, err := w3c.Eth.BlockByNumber(types.BlockNumber(blockNumber), true)
+	block, err := GetBlockByNumber(w3c, types.BlockNumber(blockNumber), true)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "failed to get block by number %v", blockNumber)
-	}
-	if block == nil {
-		return nil, nil
+		return nil, err
 	}
 
 	// batch get logs
@@ -222,6 +216,23 @@ func BatchGetBlocks(ctx context.Context, w3c *web3go.Client, blkNums []types.Blo
 	}
 
 	return blockNum2Block, nil
+}
+
+func GetBlockByNumber(w3c *web3go.Client, blockNumber types.BlockNumber, isFull bool) (val *types.Block, err error) {
+	block, err := w3c.Eth.BlockByNumber(blockNumber, isFull)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "failed to get block by number %v", blockNumber)
+	}
+
+	if block == nil {
+		return nil, errors.Errorf("invalid block data at %v (must not be nil)", blockNumber)
+	}
+
+	if block.Number == nil {
+		return nil, errors.Errorf("invalid block data at %v (block number must not be nil)", blockNumber)
+	}
+
+	return block, nil
 }
 
 type AlertContent struct {

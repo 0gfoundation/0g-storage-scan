@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/0glabs/0g-storage-scan/rpc"
 	"github.com/0glabs/0g-storage-scan/store"
 	"github.com/openweb3/web3go"
 	"github.com/openweb3/web3go/types"
@@ -89,7 +90,7 @@ func (ts *StatSubmitExpired) nextStatRange() (*StatRange, error) {
 	minPos := ts.currentPos
 	maxPos := ts.currentPos + uint64(batchInSubmitIds) - 1
 
-	block, err := ts.Sdk.Eth.BlockByNumber(types.FinalizedBlockNumber, false)
+	block, err := rpc.GetBlockByNumber(ts.Sdk, types.FinalizedBlockNumber, false)
 	if err != nil {
 		return nil, err
 	}

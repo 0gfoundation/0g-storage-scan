@@ -30,7 +30,7 @@ type Submit struct {
 	Length          uint64 `gorm:"not null"`
 
 	BlockNumber uint64    `gorm:"not null;index:idx_bn"`
-	BlockTime   time.Time `gorm:"not null;index:idx_bt"`
+	BlockTime   time.Time `gorm:"not null;index:idx_bt,sort:desc"`
 	TxHash      string    `gorm:"size:66;not null;index:idx_txHash,length:10"`
 
 	TotalSegNum    uint64          `gorm:"not null;default:0"`
@@ -590,32 +590,53 @@ type TopnAddress struct {
 }
 
 func (t *SubmitTopnStatStore) Topn(field string, duration time.Duration, limit int) ([]TopnAddress, error) {
-	addresses := new([]TopnAddress)
-
-	sqlTopn := fmt.Sprintf(`
-			SELECT
-	        a.address, s.data_size, s.storage_fee, s.txs, s.files
-			FROM
-			(
-				SELECT
-					address_id,
-					IFNULL(sum(data_size), 0) data_size,
-					IFNULL(sum(storage_fee), 0) storage_fee,
-					IFNULL(sum(txs), 0) txs,
-					IFNULL(sum(files), 0) files
-				FROM submit_topn_stats
-				WHERE stat_time >= ?
-				GROUP BY address_id
-				ORDER BY %s DESC
-				LIMIT ?
-			) s
-			LEFT JOIN addresses a ON s.address_id = a.id
+	sqlStat := fmt.Sprintf(`
+		SELECT
+			address_id,
+			IFNULL(sum(data_size), 0) data_size,
+			IFNULL(sum(storage_fee), 0) storage_fee,
+			IFNULL(sum(txs), 0) txs,
+			IFNULL(sum(files), 0) files
+		FROM submit_topn_stats
+		WHERE stat_time >= ?
+		GROUP BY address_id
+		ORDER BY %s DESC
+		LIMIT ?
 	    `, field)
 
-	if err := t.DB.Raw(sqlTopn, time.Now().Add(-duration), limit).
-		Scan(addresses).Error; err != nil {
+	stats := new([]SubmitTopnStat)
+	if err := t.DB.Raw(sqlStat, time.Now().Add(-duration), limit).
+		Scan(stats).Error; err != nil {
 		return nil, err
 	}
 
-	return *addresses, nil
+	addrIDs := make([]uint64, 0)
+	for _, s := range *stats {
+		addrIDs = append(addrIDs, s.AddressID)
+	}
+
+	addrs := new([]Address)
+	err := t.DB.Raw("select * from addresses where id in ?", addrIDs).Scan(addrs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	addrMapping := make(map[uint64]Address)
+	for _, a := range *addrs {
+		addrMapping[a.ID] = a
+	}
+
+	addresses := make([]TopnAddress, 0)
+	for _, s := range *stats {
+		ta := TopnAddress{
+			Address:    addrMapping[s.AddressID].Address,
+			DataSize:   s.DataSize,
+			StorageFee: s.StorageFee,
+			Txs:        s.Txs,
+			Files:      s.Files,
+		}
+		addresses = append(addresses, ta)
+	}
+
+	return addresses, nil
 }

@@ -15,7 +15,7 @@ import (
 
 var (
 	ErrNoFileInfoToStat   = errors.New("No file info to stat")
-	BatchGetSubmitsToStat = 10000
+	BatchGetSubmitsToStat = 100
 )
 
 type StatSubmitPruned struct {

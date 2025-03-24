@@ -287,7 +287,7 @@ func (ps *PatchSyncer) nextStatRange() (uint64, uint64, error) {
 	minPos := ps.currentBn
 	maxPos := ps.currentBn + uint64(BatchBlocksOnPatch) - 1
 
-	block, err := ps.sdk.Eth.BlockByNumber(types.FinalizedBlockNumber, false)
+	block, err := rpc.GetBlockByNumber(ps.sdk, types.FinalizedBlockNumber, false)
 	if err != nil {
 		return 0, 0, err
 	}
