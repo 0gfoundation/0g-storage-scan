@@ -90,7 +90,7 @@ func (s *CatchupSyncer) syncRange(ctx context.Context, rangeStart, rangeEnd uint
 			return err
 		}
 
-		rangeEndBlock, err := s.sdk.Eth.BlockByNumber(types.BlockNumber(end), false)
+		rangeEndBlock, err := rpc.GetBlockByNumber(s.sdk, types.BlockNumber(end), false)
 		if err != nil {
 			return err
 		}
@@ -190,9 +190,9 @@ func (s *CatchupSyncer) updateBlockRange(ctx context.Context) error {
 		s.currentBlock = s.conf.BlockWhenFlowCreated
 	}
 
-	finalizedBlock, err := s.sdk.Eth.BlockByNumber(types.FinalizedBlockNumber, false)
+	finalizedBlock, err := rpc.GetBlockByNumber(s.sdk, types.FinalizedBlockNumber, false)
 	if err != nil {
-		return errors.WithMessage(err, "failed to get finalized block")
+		return err
 	}
 
 	s.finalizedBlock = finalizedBlock.Number.Uint64()

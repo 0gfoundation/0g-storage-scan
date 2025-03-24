@@ -162,7 +162,7 @@ func (s *Syncer) syncOnce(ctx context.Context) (bool, error) {
 		}
 	}
 	if err != nil {
-		return false, err
+		return false, errors.WithMessagef(err, "Failed to get the latest block number")
 	}
 	s.latestBlock = latestBlock.Uint64()
 
@@ -277,9 +277,9 @@ func (s *Syncer) existReorgData(blockNum uint64) (bool, error) {
 		return false, nil
 	}
 
-	block, err := s.sdk.Eth.BlockByNumber(types.BlockNumber(blockNum), false)
+	block, err := rpc.GetBlockByNumber(s.sdk, types.BlockNumber(blockNum), false)
 	if err != nil {
-		return false, errors.WithMessagef(err, "Failed to get block at %v from blockchain", blockNum)
+		return false, err
 	}
 
 	return hash != block.Hash.String(), nil

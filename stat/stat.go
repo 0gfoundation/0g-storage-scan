@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0glabs/0g-storage-scan/rpc"
 	"github.com/0glabs/0g-storage-scan/store"
 	"github.com/Conflux-Chain/go-conflux-util/viper"
 	"github.com/openweb3/web3go"
@@ -192,7 +193,7 @@ func (as *AbsStat) tryAcquireTimeRange() (*TimeRange, error) {
 		return nil, ErrBlockNotSync
 	}
 
-	blockFinalized, err := as.sdk.Eth.BlockByNumber(types.FinalizedBlockNumber, false)
+	blockFinalized, err := rpc.GetBlockByNumber(as.sdk, types.FinalizedBlockNumber, false)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +226,7 @@ func defaultRangeStart(sdk *web3go.Client) (time.Time, error) {
 	config := StatConfig{}
 	viper.MustUnmarshalKey("stat", &config)
 
-	block, err := sdk.Eth.BlockByNumber(types.BlockNumber(config.BlockOnStatBegin), false)
+	block, err := rpc.GetBlockByNumber(sdk, types.BlockNumber(config.BlockOnStatBegin), false)
 	if err != nil {
 		return time.Time{}, err
 	}

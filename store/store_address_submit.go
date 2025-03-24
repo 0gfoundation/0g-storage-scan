@@ -110,6 +110,7 @@ func (ass *AddressSubmitStore) List(addressID *uint64, rootHash *string, txHash 
 		if err := dbRaw.Order(orderBy).Offset(skip).Limit(limit).Find(list).Error; err != nil {
 			return 0, nil, err
 		}
+		return total, *list, nil
 	}
 
 	total, err := ass.Store.ListByOrder(dbRaw, orderBy, skip, limit, list)
