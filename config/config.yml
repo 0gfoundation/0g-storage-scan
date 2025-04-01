@@ -17,24 +17,24 @@ eth:
   # Alert channel
   # alertChannel: tgRobot
 
-# storage SDK client configurations
-storage:
-  # Storage node rpc url
-  urls: [https://rpc1-storage-testnet-turbo.0g.ai,https://rpc2-storage-testnet-turbo.0g.ai]
-  # Retry times if failure, if 0 never
-  # retry: 0
-  # Interval duration before each retry
-  # retryInterval: 1s
-  # Request timeout duration
-  # requestTimeout: 3s
-  # Max connections allowed per storage node
-  # maxConnsPerHost: 1024
-  # Health report config
-  # healthReport:
-  #   threshold: 1m
-  #   remind: 5m
-  # Alert channel
-  # alertChannel: tgRobot
+## storage SDK client configurations
+#storage:
+#  # Storage indexer url
+#  indexer: https://indexer-storage-testnet-turbo.0g.ai
+#  # Retry times if failure, if 0 never
+#  retry: 0
+#  # Interval duration before each retry
+#  retryInterval: 1s
+#  # Request timeout duration
+#  requestTimeout: 3s
+#  # Max connections allowed per storage node
+#  maxConnsPerHost: 1024
+#  # Health report config
+#  healthReport:
+#    threshold: 1m
+#    remind: 5m
+#  # Alert channel
+#  alertChannel: tgRobot
 
 # storage contracts info configurations
 contract:

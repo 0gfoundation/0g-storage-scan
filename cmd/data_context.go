@@ -83,6 +83,9 @@ func MustInitDataContext() DataContext {
 
 	storageConfig := rpc.StorageConfig{}
 	viper.MustUnmarshalKey("storage", &storageConfig)
+	if storageConfig.Indexer == "" {
+		logrus.Fatalln("no storage indexer url configured")
+	}
 
 	return DataContext{
 		DB:            store.MustNewStore(db, cfg),
