@@ -238,6 +238,9 @@ func cacheMinerRewardStat() error {
 	if err != nil {
 		return err
 	}
+	if stat == nil {
+		return nil
+	}
 
 	cache.minerRewardStat = MinerRewardStat{
 		AvgReward24Hours: *avg,
