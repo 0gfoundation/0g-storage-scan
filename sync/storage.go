@@ -93,7 +93,7 @@ func (ss *StorageSyncer) NodeSyncHeight(ctx context.Context, ticker *time.Ticker
 	}
 
 	if ss.alertChannel != "" {
-		e := rpc.AlertErr(ctx, "StorageNodeRPCError", ss.alertChannel, err, ss.healthReport,
+		e := rpc.AlertErr(ctx, "StorageIndexerRPCError", ss.alertChannel, err, ss.healthReport,
 			&ss.storageRpcHealth, ss.storageConfig.Indexer)
 
 		if e != nil {

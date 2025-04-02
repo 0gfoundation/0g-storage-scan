@@ -137,8 +137,11 @@ func GetFileInfoByTxSeq(storageConfig StorageConfig, seqNo uint64) (*node.FileIn
 	var result node.FileInfo
 	client := resty.New()
 	resp, err := client.R().SetResult(&result).Get(url)
-	if err != nil || resp.IsError() {
-		return nil, errors.WithMessagef(err, "Failed to get file info, seqNo %v %s", seqNo, resp.String())
+	if err != nil {
+		return nil, errors.WithMessagef(err, "Failed to get file info, seqNo %v", seqNo)
+	}
+	if resp.IsError() {
+		return nil, errors.Errorf("Failed to get file info, seqNo %v, %s", seqNo, resp.String())
 	}
 
 	return &result, nil
@@ -150,8 +153,11 @@ func GetNodeStatus(storageConfig StorageConfig) (*node.Status, error) {
 	var result node.Status
 	client := resty.New()
 	resp, err := client.R().SetResult(&result).Get(url)
-	if err != nil || resp.IsError() {
-		return nil, errors.WithMessagef(err, "Failed to get node status %s", resp.String())
+	if err != nil {
+		return nil, errors.WithMessage(err, "Failed to get node status")
+	}
+	if resp.IsError() {
+		return nil, errors.Errorf("Failed to get node status, %s", resp.String())
 	}
 
 	return &result, nil
