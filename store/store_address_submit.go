@@ -93,7 +93,7 @@ func (ass *AddressSubmitStore) List(addressID *uint64, rootHash *string, txHash 
 	}
 
 	list := new([]AddressSubmit)
-	if len(conds) == 0 {
+	if len(conds) == 1 {
 		var address Address
 		exist, err := ass.Store.GetById(&address, *addressID)
 		if err != nil {
@@ -107,7 +107,18 @@ func (ass *AddressSubmitStore) List(addressID *uint64, rootHash *string, txHash 
 		if total <= int64(skip) {
 			return total, *list, nil
 		}
-		if err := dbRaw.Order(orderBy).Offset(skip).Limit(limit).Find(list).Error; err != nil {
+
+		if err := ass.DB.Raw(`
+			SELECT a.* FROM address_submits a
+			JOIN (
+				SELECT sender_id, submission_index
+				FROM address_submits
+				WHERE sender_id = ?
+				ORDER BY submission_index DESC
+				LIMIT ? OFFSET ? 
+			) AS b ON a.sender_id = b.sender_id AND a.submission_index = b.submission_index
+			ORDER BY a.submission_index DESC
+		`, *addressID, limit, skip).Scan(list).Error; err != nil {
 			return 0, nil, err
 		}
 		return total, *list, nil
