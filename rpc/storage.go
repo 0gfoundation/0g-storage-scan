@@ -2,10 +2,12 @@ package rpc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/0glabs/0g-storage-client/node"
+	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/Conflux-Chain/go-conflux-util/health"
 	"github.com/Conflux-Chain/go-conflux-util/parallel"
 	"github.com/go-resty/resty/v2"
@@ -133,32 +135,49 @@ func BatchGetFileInfos(ctx context.Context, storageConfig StorageConfig, rpcPara
 
 func GetFileInfoByTxSeq(storageConfig StorageConfig, seqNo uint64) (*node.FileInfo, error) {
 	url := fmt.Sprintf("%s/file/info/%v", storageConfig.Indexer, seqNo)
-
-	var result node.FileInfo
-	client := resty.New()
-	resp, err := client.R().SetResult(&result).Get(url)
+	data, err := requestIndexer(url)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "Failed to get file info, seqNo %v", seqNo)
-	}
-	if resp.IsError() {
-		return nil, errors.Errorf("Failed to get file info, seqNo %v, %s", seqNo, resp.String())
+		return nil, err
 	}
 
-	return &result, nil
+	var fileInfo node.FileInfo
+	if err = json.Unmarshal(data, &fileInfo); err != nil {
+		return nil, errors.Errorf("Failed to unmarshal file info, seqNo %v %s", seqNo, string(data))
+	}
+
+	return &fileInfo, nil
 }
 
 func GetNodeStatus(storageConfig StorageConfig) (*node.Status, error) {
 	url := fmt.Sprintf("%s/node/status", storageConfig.Indexer)
+	data, err := requestIndexer(url)
+	if err != nil {
+		return nil, err
+	}
 
-	var result node.Status
+	var status node.Status
+	if err = json.Unmarshal(data, &status); err != nil {
+		return nil, errors.Errorf("Failed to unmarshal node status, %s", string(data))
+	}
+
+	return &status, nil
+}
+
+func requestIndexer(url string) ([]byte, error) {
 	client := resty.New()
+	var result api.BusinessError
 	resp, err := client.R().SetResult(&result).Get(url)
 	if err != nil {
-		return nil, errors.WithMessage(err, "Failed to get node status")
+		return nil, errors.WithMessagef(err, "Failed to request indexer, %s", url)
 	}
-	if resp.IsError() {
-		return nil, errors.Errorf("Failed to get node status, %s", resp.String())
+	if resp.IsError() || result.Code != 0 {
+		return nil, errors.Errorf("Failed to request indexer, %s %s", url, resp.String())
 	}
 
-	return &result, nil
+	data, err := json.Marshal(result.Data)
+	if err != nil {
+		return nil, errors.Errorf("Failed to marshal indexer's response, %s %s", url, resp.String())
+	}
+
+	return data, nil
 }
