@@ -27,7 +27,6 @@ type baseSyncer struct {
 	flowSubmitSig   string
 	flowNewEpochSig string
 	rewardAddr      string
-	rewardSigOld    string
 	rewardSig       string
 	mineAddr        string
 	minerRegSig     string
@@ -73,7 +72,6 @@ func (s *baseSyncer) mustInitContract() {
 
 	s.flowSubmitSig = cfg.Flow.SubmitEventSignature
 	s.flowNewEpochSig = cfg.Flow.NewEpochEventSignature
-	s.rewardSigOld = cfg.Reward.DistributeRewardEventSignatureOld
 	s.rewardSig = cfg.Reward.DistributeRewardEventSignature
 	s.minerRegSig = cfg.Mine.NewMinerIdEventSignature
 	s.minerUpdateSig = cfg.Mine.UpdateMinerIdEventSignature
@@ -83,7 +81,6 @@ func (s *baseSyncer) mustInitContract() {
 	s.topics = append(s.topics, []common.Hash{
 		common.HexToHash(cfg.Flow.SubmitEventSignature),
 		common.HexToHash(cfg.Flow.NewEpochEventSignature),
-		common.HexToHash(cfg.Reward.DistributeRewardEventSignatureOld),
 		common.HexToHash(cfg.Reward.DistributeRewardEventSignature),
 		common.HexToHash(cfg.Mine.NewMinerIdEventSignature),
 		common.HexToHash(cfg.Mine.UpdateMinerIdEventSignature),
@@ -273,18 +270,13 @@ func (s *baseSyncer) decodeFlowEpoch(blkTime time.Time, log types.Log) (*store.F
 func (s *baseSyncer) decodeReward(blkTime time.Time, log types.Log) (*store.Reward, error) {
 	addr := log.Address.String()
 	sig := log.Topics[0].String()
-	if !strings.EqualFold(addr, s.rewardAddr) || (sig != s.rewardSig && sig != s.rewardSigOld) {
+	if !strings.EqualFold(addr, s.rewardAddr) || (sig != s.rewardSig) {
 		return nil, nil
 	}
 
 	var reward *store.Reward
 	var err error
 	switch sig {
-	case s.rewardSigOld:
-		reward, err = store.NewRewardOld(blkTime, log, nhContract.DummyRewardOldFilterer())
-		if err != nil {
-			return nil, err
-		}
 	case s.rewardSig:
 		reward, err = store.NewReward(blkTime, log, nhContract.DummyRewardFilterer())
 		if err != nil {
@@ -494,7 +486,7 @@ func (s *baseSyncer) convertLogs(logs []types.Log, bn2TimeMap map[uint64]uint64)
 			if flowEpoch != nil {
 				decodedLogs.FlowEpochs = append(decodedLogs.FlowEpochs, *flowEpoch)
 			}
-		case s.rewardSig, s.rewardSigOld:
+		case s.rewardSig:
 			reward, err := s.decodeReward(blockTime, log)
 			if err != nil {
 				return nil, err
