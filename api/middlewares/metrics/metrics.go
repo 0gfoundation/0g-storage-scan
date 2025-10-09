@@ -6,13 +6,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
-	"strings"
 	"time"
 
 	nhMetrics "github.com/0glabs/0g-storage-scan/metrics"
 	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/Conflux-Chain/go-conflux-util/http/middlewares"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -87,12 +85,13 @@ var CtxKeyURLType = middlewares.CtxKey("X-URL-TYPE")
 
 func URLType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		url := r.URL.Path
+		url := validPath(r.URL.Path)
 
-		urlType, _ := ReplaceStrByRegex(url, "/accounts/[a-zA-Z0-9]+", "/accounts/address")
-		urlType, _ = ReplaceStrByRegex(urlType, "/txs/[a-zA-Z0-9]+", "/txs/detail")
-		if i := strings.Index(urlType, "/txs/detail"); i != -1 {
-			urlType = urlType[0:(i + len("/txs/detail"))]
+		var urlType string
+		if url != nil {
+			urlType = *url
+		} else {
+			urlType = "invalid url"
 		}
 
 		ctx := context.WithValue(r.Context(), CtxKeyURLType, urlType)
@@ -100,10 +99,42 @@ func URLType(next http.Handler) http.Handler {
 	})
 }
 
-func ReplaceStrByRegex(str, rule, replace string) (string, error) {
-	reg, err := regexp.Compile(rule)
-	if reg == nil || err != nil {
-		return "", errors.WithMessagef(err, "Compile regex rule %v", rule)
+var URLPattern = map[*regexp.Regexp]string{
+	regexp.MustCompile(`^/api/accounts/0[xX][0-9a-fA-F]{40}$`):       "/api/accounts/address",
+	regexp.MustCompile(`^/api/accounts/0[xX][0-9a-fA-F]{40}/txs$`):   "/api/accounts/address/txs",
+	regexp.MustCompile(`^/api/miners/0[xX][0-9a-fA-F]{40}$`):         "/api/miners/address",
+	regexp.MustCompile(`^/api/miners/0[xX][0-9a-fA-F]{40}/rewards$`): "/api/miners/address/rewards",
+	regexp.MustCompile(`^/api/txs/0[xX][0-9a-fA-F]{64}$`):            "/api/txs/txSeq",
+}
+
+func validPath(url string) *string {
+	validPaths := map[string]bool{
+		"/api/miners":           true,
+		"/api/rewards":          true,
+		"/api/stats/address":    true,
+		"/api/stats/fee":        true,
+		"/api/stats/layer1-tx":  true,
+		"/api/stats/miner":      true,
+		"/api/stats/reward":     true,
+		"/api/stats/storage":    true,
+		"/api/stats/summary":    true,
+		"/api/stats/top/data":   true,
+		"/api/stats/top/fee":    true,
+		"/api/stats/top/files":  true,
+		"/api/stats/top/reward": true,
+		"/api/stats/top/txs":    true,
+		"/api/txs":              true,
 	}
-	return reg.ReplaceAllString(str, replace), nil
+
+	if _, exists := validPaths[url]; exists {
+		return &url
+	}
+
+	for r, s := range URLPattern {
+		if r.MatchString(url) {
+			return &s
+		}
+	}
+
+	return nil
 }
