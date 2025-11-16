@@ -44,48 +44,98 @@ func GetEthDataByReceipts(w3c *web3go.Client, blockNumber uint64) (*EthData, err
 }
 
 func getEthDataByReceipts(w3c *web3go.Client, blockNumber uint64) (*EthData, error) {
-	// get block
-	block, err := GetBlockByNumber(w3c, types.BlockNumber(blockNumber), true)
+	// Use batch function for single block
+	batchData, err := getEthDataBatchByReceipts(w3c, blockNumber, blockNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	// batch get receipts
-	blockNumOrHash := types.BlockNumberOrHashWithNumber(types.BlockNumber(blockNumber))
-	blockReceipts, err := w3c.Parity.BlockReceipts(&blockNumOrHash)
+	// Return the single block data or nil if no data
+	if len(batchData) == 0 {
+		return nil, nil
+	}
+
+	return batchData[0], nil
+}
+
+// GetEthDataBatchByReceipts gets data for multiple blocks using batch receipt retrieval
+func GetEthDataBatchByReceipts(w3c *web3go.Client, blockFrom, blockTo uint64) ([]*EthData, error) {
+	start := time.Now()
+	data, err := getEthDataBatchByReceipts(w3c, blockFrom, blockTo)
+
+	metrics.Registry.Sync.QueryEthData("getBatchReceipts").UpdateSince(start)
+	metrics.Registry.Sync.QueryEthDataAvailability("getBatchReceipts").Mark(err == nil || errors.Is(err, ErrChainReorged))
+
+	return data, err
+}
+
+func getEthDataBatchByReceipts(w3c *web3go.Client, blockFrom, blockTo uint64) ([]*EthData, error) {
+	// get blocks for the range
+	var blockNumbers []types.BlockNumber
+	for blockNum := blockFrom; blockNum <= blockTo; blockNum++ {
+		blockNumbers = append(blockNumbers, types.BlockNumber(blockNum))
+	}
+
+	// batch get blocks
+	ctx := context.Background()
+	blockMap, err := BatchGetBlocks(ctx, w3c, blockNumbers, true, 16)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to get block receipts")
-	}
-	if blockReceipts == nil {
-		return nil, errors.WithMessage(ErrChainReorged, "batch retrieved block receipts nil")
+		return nil, errors.WithMessagef(err, "failed to batch get blocks %v-%v", blockFrom, blockTo)
 	}
 
-	// get receipt
-	txReceipts := map[common.Hash]*types.Receipt{}
-	blockTxs := block.Transactions.Transactions()
-	if len(blockTxs) != len(blockReceipts) {
-		return nil, errors.Errorf("block receipts number mismatch, rcpts %v, txs %v", len(blockReceipts), len(blockTxs))
-	}
-	for i := 0; i < len(blockTxs); i++ {
-		tx := blockTxs[i]
-		receipt := &blockReceipts[i]
-
-		// check re-org
-		switch {
-		case receipt.BlockHash != block.Hash:
-			return nil, errors.WithMessagef(ErrChainReorged, "receipt block hash mismatch, rcptBlkHash %v, blkHash %v",
-				receipt.BlockHash, block.Hash)
-		case receipt.BlockNumber != blockNumber:
-			return nil, errors.WithMessagef(ErrChainReorged, "receipt block num mismatch, rcptBlkNum %v, blkNum %v",
-				receipt.BlockNumber, blockNumber)
-		case receipt.TransactionHash != tx.Hash:
-			return nil, errors.WithMessagef(ErrChainReorged, "receipt tx hash mismatch, rcptTxHash %v, TxHash %v",
-				receipt.TransactionHash, tx.Hash)
+	// create EthData for each block by getting receipts individually
+	var result []*EthData
+	for blockNum := blockFrom; blockNum <= blockTo; blockNum++ {
+		block, exists := blockMap[blockNum]
+		if !exists {
+			continue // skip blocks that don't exist
 		}
-		txReceipts[tx.Hash] = receipt
+
+		// batch get receipts for this block
+		blockNumOrHash := types.BlockNumberOrHashWithNumber(types.BlockNumber(blockNum))
+		blockReceipts, err := w3c.Parity.BlockReceipts(&blockNumOrHash)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "failed to get block receipts for block %v", blockNum)
+		}
+		if blockReceipts == nil {
+			return nil, errors.WithMessagef(ErrChainReorged, "batch retrieved block receipts nil for block %v", blockNum)
+		}
+
+		// process receipts with reorg checking
+		txReceipts := map[common.Hash]*types.Receipt{}
+		blockTxs := block.Transactions.Transactions()
+		if len(blockTxs) != len(blockReceipts) {
+			return nil, errors.Errorf("block receipts number mismatch at block %v, rcpts %v, txs %v", blockNum, len(blockReceipts), len(blockTxs))
+		}
+
+		for i := 0; i < len(blockTxs); i++ {
+			tx := blockTxs[i]
+			receipt := &blockReceipts[i]
+
+			// check re-org
+			switch {
+			case receipt.BlockHash != block.Hash:
+				return nil, errors.WithMessagef(ErrChainReorged, "receipt block hash mismatch at block %v, rcptBlkHash %v, blkHash %v",
+					blockNum, receipt.BlockHash, block.Hash)
+			case receipt.BlockNumber != blockNum:
+				return nil, errors.WithMessagef(ErrChainReorged, "receipt block num mismatch at block %v, rcptBlkNum %v, blkNum %v",
+					blockNum, receipt.BlockNumber, blockNum)
+			case receipt.TransactionHash != tx.Hash:
+				return nil, errors.WithMessagef(ErrChainReorged, "receipt tx hash mismatch at block %v, rcptTxHash %v, TxHash %v",
+					blockNum, receipt.TransactionHash, tx.Hash)
+			}
+			txReceipts[tx.Hash] = receipt
+		}
+
+		ethData := &EthData{
+			Number:   blockNum,
+			Block:    &block,
+			Receipts: txReceipts,
+		}
+		result = append(result, ethData)
 	}
 
-	return &EthData{Number: blockNumber, Block: block, Receipts: txReceipts}, nil
+	return result, nil
 }
 
 func GetEthDataByLogs(w3c *web3go.Client, blockNumber uint64, addresses []common.Address, topics [][]common.Hash) (*EthData, error) {
@@ -99,46 +149,111 @@ func GetEthDataByLogs(w3c *web3go.Client, blockNumber uint64, addresses []common
 }
 
 func getEthDataByLogs(w3c *web3go.Client, blockNumber uint64, addresses []common.Address, topics [][]common.Hash) (*EthData, error) {
-	// get block
-	block, err := GetBlockByNumber(w3c, types.BlockNumber(blockNumber), true)
+	// Use batch function for single block
+	batchData, err := getEthDataBatchByLogs(w3c, blockNumber, blockNumber, addresses, topics)
 	if err != nil {
 		return nil, err
 	}
 
-	// batch get logs
-	logArray, err := BatchGetLogs(w3c, blockNumber, blockNumber, addresses, topics)
+	// Return the single block data or nil if no data
+	if len(batchData) == 0 {
+		return nil, nil
+	}
+
+	return batchData[0], nil
+}
+
+// GetEthDataBatchByLogs gets data for multiple blocks using batch log retrieval
+func GetEthDataBatchByLogs(w3c *web3go.Client, blockFrom, blockTo uint64, addresses []common.Address, topics [][]common.Hash) ([]*EthData, error) {
+	start := time.Now()
+	data, err := getEthDataBatchByLogs(w3c, blockFrom, blockTo, addresses, topics)
+
+	metrics.Registry.Sync.QueryEthData("getBatchLogs").UpdateSince(start)
+	metrics.Registry.Sync.QueryEthDataAvailability("getBatchLogs").Mark(err == nil || errors.Is(err, ErrChainReorged))
+
+	return data, err
+}
+
+func getEthDataBatchByLogs(w3c *web3go.Client, blockFrom, blockTo uint64, addresses []common.Address, topics [][]common.Hash) ([]*EthData, error) {
+	// batch get logs for the range
+	logArray, err := BatchGetLogs(w3c, blockFrom, blockTo, addresses, topics)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "failed to get flow submits in batch at block %v", blockNumber)
+		return nil, errors.WithMessagef(err, "failed to get batch logs for blocks %v-%v", blockFrom, blockTo)
 	}
 
-	// check re-org
-	txs := block.Transactions.Transactions()
-	txIndex2Tx := make(map[uint64]types.TransactionDetail)
-	for _, tx := range txs {
-		txIndex2Tx[*tx.TransactionIndex] = tx
+	// group logs by block number
+	blockLogs := make(map[uint64][]types.Log)
+	for _, log := range logArray {
+		blockNum := log.BlockNumber
+		blockLogs[blockNum] = append(blockLogs[blockNum], log)
 	}
-	logs := make([]types.Log, 0)
-	for i := 0; i < len(logArray); i++ {
-		log := logArray[i]
-		tx := txIndex2Tx[uint64(log.TxIndex)]
-		switch {
-		case log.BlockHash != block.Hash:
-			return nil, errors.WithMessagef(ErrChainReorged, "log block hash mismatch, logBlkHash %v, blkHash %v",
-				log.BlockHash, block.Hash)
-		case log.BlockNumber != blockNumber:
-			return nil, errors.WithMessagef(ErrChainReorged, "log block num mismatch, logBlkNum %v, blkNum %v",
-				log.BlockNumber, blockNumber)
-		case log.TxHash != tx.Hash:
-			return nil, errors.WithMessagef(ErrChainReorged, "log tx hash mismatch, logTxHash %v, txHash %v",
-				log.TxHash, tx.Hash)
-		case uint64(log.TxIndex) != *tx.TransactionIndex:
-			return nil, errors.WithMessagef(ErrChainReorged, "log tx index mismatch, logTxIndex %v, txIndex %v",
-				log.TxIndex, tx.TransactionIndex)
+
+	// get blocks for the range
+	var blockNumbers []types.BlockNumber
+	for blockNum := blockFrom; blockNum <= blockTo; blockNum++ {
+		blockNumbers = append(blockNumbers, types.BlockNumber(blockNum))
+	}
+
+	// batch get blocks
+	ctx := context.Background()
+	blockMap, err := BatchGetBlocks(ctx, w3c, blockNumbers, true, 16)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "failed to batch get blocks %v-%v", blockFrom, blockTo)
+	}
+
+	// create EthData for each block
+	var result []*EthData
+	for blockNum := blockFrom; blockNum <= blockTo; blockNum++ {
+		block, exists := blockMap[blockNum]
+		if !exists {
+			continue // skip blocks that don't exist
 		}
-		logs = append(logs, log)
+
+		logs := blockLogs[blockNum]
+		if logs == nil {
+			logs = []types.Log{} // empty logs for blocks without relevant logs
+		}
+
+		// validate logs belong to the correct block and check for reorg
+		validLogs := make([]types.Log, 0, len(logs))
+		txIndex2Tx := make(map[uint64]types.TransactionDetail)
+
+		// build transaction index map for reorg checking
+		txs := block.Transactions.Transactions()
+		for _, tx := range txs {
+			txIndex2Tx[*tx.TransactionIndex] = tx
+		}
+
+		for _, log := range logs {
+			// check re-org
+			if tx, exists := txIndex2Tx[uint64(log.TxIndex)]; exists {
+				switch {
+				case log.BlockHash != block.Hash:
+					return nil, errors.WithMessagef(ErrChainReorged, "log block hash mismatch at block %v, logBlkHash %v, blkHash %v",
+						blockNum, log.BlockHash, block.Hash)
+				case log.BlockNumber != blockNum:
+					return nil, errors.WithMessagef(ErrChainReorged, "log block num mismatch at block %v, logBlkNum %v, blkNum %v",
+						blockNum, log.BlockNumber, blockNum)
+				case log.TxHash != tx.Hash:
+					return nil, errors.WithMessagef(ErrChainReorged, "log tx hash mismatch at block %v, logTxHash %v, txHash %v",
+						blockNum, log.TxHash, tx.Hash)
+				case uint64(log.TxIndex) != *tx.TransactionIndex:
+					return nil, errors.WithMessagef(ErrChainReorged, "log tx index mismatch at block %v, logTxIndex %v, txIndex %v",
+						blockNum, log.TxIndex, tx.TransactionIndex)
+				}
+				validLogs = append(validLogs, log)
+			}
+		}
+
+		ethData := &EthData{
+			Number: blockNum,
+			Block:  &block,
+			Logs:   validLogs,
+		}
+		result = append(result, ethData)
 	}
 
-	return &EthData{Number: blockNumber, Block: block, Logs: logs}, nil
+	return result, nil
 }
 
 func BatchGetLogs(w3c *web3go.Client, blockFrom, blockTo uint64, addresses []common.Address,

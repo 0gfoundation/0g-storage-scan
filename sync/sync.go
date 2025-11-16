@@ -172,52 +172,89 @@ func (s *Syncer) syncOnce(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
+	// calculate batch size based on block gap
+	blockGap := latestBlock.Uint64() - s.conf.DelayBlocksAgainstLatest - curBlock
+	batchSize := s.calculateBatchSize(blockGap)
+
+	// calculate the actual range to sync
+	endBlock := curBlock + batchSize - 1
+	maxBlock := latestBlock.Uint64() - s.conf.DelayBlocksAgainstLatest
+	if endBlock > maxBlock {
+		endBlock = maxBlock
+	}
+
 	// check parity api available
 	if err := s.tryParityAPI(ctx, curBlock); err != nil {
 		return false, err
 	}
 
-	// get eth data
-	var data *rpc.EthData
+	// get batch eth data
+	var dataArray []*rpc.EthData
 	if syncDataByLogs {
-		data, err = rpc.GetEthDataByLogs(s.sdk, curBlock, s.addresses, s.topics)
+		dataArray, err = rpc.GetEthDataBatchByLogs(s.sdk, curBlock, endBlock, s.addresses, s.topics)
 	} else {
-		data, err = rpc.GetEthDataByReceipts(s.sdk, curBlock)
+		dataArray, err = rpc.GetEthDataBatchByReceipts(s.sdk, curBlock, endBlock)
 	}
 	if err != nil {
 		return false, err
 	}
-	if data == nil {
+
+	if len(dataArray) == 0 {
 		return true, nil
 	}
 
-	// check pivot hash
-	latestBlockHash, err := s.getStoreLatestBlockHash()
-	if err != nil {
-		return false, err
-	}
-	if len(latestBlockHash) > 0 && data.Block.ParentHash.Hex() != latestBlockHash {
-		return false, s.revertReorgData(s.latestStoreBlock())
-	}
-
-	// persist db
-	block := store.NewBlock(data.Block)
-	decodedLogs, err := s.parseEthData(data)
-	if err != nil {
-		return false, err
-	}
-	metrics.Registry.Sync.SyncOnceSize().Update(int64(decodedLogs.Len()))
-	if err = s.db.Push(block, decodedLogs); err != nil {
-		return false, err
+	// Check for reorg before processing the batch
+	if len(dataArray) > 0 {
+		firstData := dataArray[0]
+		latestBlockHash, err := s.getStoreLatestBlockHash()
+		if err != nil {
+			return false, err
+		}
+		if len(latestBlockHash) > 0 && firstData.Block.ParentHash.Hex() != latestBlockHash {
+			return false, s.revertReorgData(s.latestStoreBlock())
+		}
 	}
 
-	// increase currentBlock
-	if s.currentBlock%100 == 0 {
-		logrus.WithField("block", s.currentBlock).Info("Sync data")
+	// process each block in the batch
+	syncedBlocks := 0
+	for _, data := range dataArray {
+		// persist db
+		block := store.NewBlock(data.Block)
+		decodedLogs, err := s.parseEthData(data)
+		if err != nil {
+			return false, err
+		}
+		metrics.Registry.Sync.SyncOnceSize().Update(int64(decodedLogs.Len()))
+		if err = s.db.Push(block, decodedLogs); err != nil {
+			return false, err
+		}
+
+		syncedBlocks++
+		s.currentBlock++
 	}
-	s.currentBlock++
+
+	// log progress
+	if syncedBlocks > 1 {
+		logrus.WithFields(logrus.Fields{
+			"blocks_synced": syncedBlocks,
+			"current_block": s.currentBlock - 1,
+			"latest_block":  latestBlock.Uint64(),
+			"block_gap":     blockGap,
+			"batch_size":    batchSize,
+		}).Info("Batch sync completed")
+	} else if s.currentBlock%100 == 0 {
+		logrus.WithField("block", s.currentBlock-1).Info("Sync data")
+	}
 
 	return false, nil
+}
+
+// calculateBatchSize determines the number of blocks to sync based on the gap
+func (s *Syncer) calculateBatchSize(blockGap uint64) uint64 {
+	if blockGap > 1000 {
+		return 1000
+	}
+	return blockGap
 }
 
 func (s *Syncer) getStoreLatestBlockHash() (string, error) {
