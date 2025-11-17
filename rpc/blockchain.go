@@ -86,10 +86,7 @@ func getEthDataBatchByReceipts(w3c *web3go.Client, blockFrom, blockTo uint64) ([
 	// create EthData for each block by getting receipts individually
 	var result []*EthData
 	for blockNum := blockFrom; blockNum <= blockTo; blockNum++ {
-		block, exists := blockMap[blockNum]
-		if !exists {
-			continue // skip blocks that don't exist
-		}
+		block := blockMap[blockNum]
 
 		// batch get receipts for this block
 		blockNumOrHash := types.BlockNumberOrHashWithNumber(types.BlockNumber(blockNum))
@@ -204,10 +201,7 @@ func getEthDataBatchByLogs(w3c *web3go.Client, blockFrom, blockTo uint64, addres
 	// create EthData for each block
 	var result []*EthData
 	for blockNum := blockFrom; blockNum <= blockTo; blockNum++ {
-		block, exists := blockMap[blockNum]
-		if !exists {
-			continue // skip blocks that don't exist
-		}
+		block := blockMap[blockNum]
 
 		logs := blockLogs[blockNum]
 		if logs == nil {
@@ -329,6 +323,13 @@ func BatchGetBlocks(ctx context.Context, w3c *web3go.Client, blkNums []types.Blo
 			blockNum2Block[block.Number.Uint64()] = *block
 		}
 	}
+
+	for _, num := range blkNums {
+		if _, exists := blockNum2Block[uint64(num)]; !exists {
+			return nil, errors.Errorf("block not found at number %v", num)
+		}
+	}
+
 
 	return blockNum2Block, nil
 }
