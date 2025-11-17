@@ -168,20 +168,17 @@ func (s *Syncer) syncOnce(ctx context.Context) (bool, error) {
 
 	// check latest block
 	curBlock := s.currentBlock
-	if curBlock > latestBlock.Uint64()-s.conf.DelayBlocksAgainstLatest {
+	maxSyncBlock := latestBlock.Uint64() - s.conf.DelayBlocksAgainstLatest
+	if curBlock > maxSyncBlock {
 		return true, nil
 	}
 
 	// calculate batch size based on block gap
-	blockGap := latestBlock.Uint64() - s.conf.DelayBlocksAgainstLatest - curBlock
+	blockGap := maxSyncBlock - curBlock + 1 // +1 to include the target block
 	batchSize := s.calculateBatchSize(blockGap)
 
 	// calculate the actual range to sync
-	endBlock := curBlock + batchSize - 1
-	maxBlock := latestBlock.Uint64() - s.conf.DelayBlocksAgainstLatest
-	if endBlock > maxBlock {
-		endBlock = maxBlock
-	}
+	endBlock := min(curBlock + batchSize - 1, maxSyncBlock)
 
 	// check parity api available
 	if err := s.tryParityAPI(ctx, curBlock); err != nil {
@@ -251,7 +248,10 @@ func (s *Syncer) syncOnce(ctx context.Context) (bool, error) {
 
 // calculateBatchSize determines the number of blocks to sync based on the gap
 func (s *Syncer) calculateBatchSize(blockGap uint64) uint64 {
-	if blockGap > 1000 {
+	if blockGap == 0 {
+		return 1 // Always sync at least 1 block
+	}
+	if blockGap > 2000 {
 		return 1000
 	}
 	return blockGap
