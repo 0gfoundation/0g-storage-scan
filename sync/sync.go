@@ -178,7 +178,7 @@ func (s *Syncer) syncOnce(ctx context.Context) (bool, error) {
 	batchSize := s.calculateBatchSize(blockGap)
 
 	// calculate the actual range to sync
-	endBlock := min(curBlock + batchSize - 1, maxSyncBlock)
+	endBlock := min(curBlock+batchSize-1, maxSyncBlock)
 
 	// check parity api available
 	if err := s.tryParityAPI(ctx, curBlock); err != nil {

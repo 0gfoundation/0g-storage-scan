@@ -399,7 +399,7 @@ type TopnMiner struct {
 func (t *RewardTopnStatStore) Topn(duration time.Duration, limit int) ([]TopnMiner, error) {
 	miners := new([]TopnMiner)
 
-	sqlTopn := fmt.Sprintf(`
+	sqlTopn := `
 			SELECT
 	        a.id, a.address, s.amount, s.win_count
 			FROM
@@ -415,7 +415,7 @@ func (t *RewardTopnStatStore) Topn(duration time.Duration, limit int) ([]TopnMin
 				LIMIT ?
 			) s
 			LEFT JOIN addresses a ON s.address_id = a.id
-	    `)
+	    `
 
 	if err := t.DB.Raw(sqlTopn, time.Now().Add(-duration), limit).Scan(miners).Error; err != nil {
 		return nil, err
