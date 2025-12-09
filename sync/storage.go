@@ -128,10 +128,9 @@ func (ss *StorageSyncer) checkSyncHeightGaps(nodeSyncHeight uint64) error {
 	}
 
 	currentHeight := currentBlock.Uint64()
-	const alertThreshold = 1000
 
 	// Check layer1-logsyncheight gap (node sync height vs blockchain height)
-	if currentHeight > nodeSyncHeight && currentHeight-nodeSyncHeight > alertThreshold {
+	if currentHeight > nodeSyncHeight && currentHeight-nodeSyncHeight > ss.storageConfig.SyncGapAlertThreshold {
 		gap := currentHeight - nodeSyncHeight
 		return fmt.Errorf("Layer1LogSyncHeight sync gap: %d blocks behind (sync: %d, current: %d)", gap, nodeSyncHeight, currentHeight)
 	}
@@ -148,7 +147,7 @@ func (ss *StorageSyncer) checkSyncHeightGaps(nodeSyncHeight uint64) error {
 	}
 
 	// Check logsyncheight gap (scanner sync height vs blockchain height)
-	if currentHeight > scannerSyncHeight && currentHeight-scannerSyncHeight > alertThreshold {
+	if currentHeight > scannerSyncHeight && currentHeight-scannerSyncHeight > ss.storageConfig.SyncGapAlertThreshold {
 		gap := currentHeight - scannerSyncHeight
 		return fmt.Errorf("LogSyncHeight sync gap: %d blocks behind (sync: %d, current: %d)", gap, scannerSyncHeight, currentHeight)
 	}
