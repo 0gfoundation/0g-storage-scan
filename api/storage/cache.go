@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"sync"
 	"time"
 
@@ -196,25 +195,9 @@ func loadTopnRewardsOverall(topnMiners map[time.Duration][]store.TopnMiner) erro
 func cacheSyncHeights() error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-
-	value, ok, err := db.ConfigStore.Get(store.SyncHeightNode)
+	nodeSyncHeight, scanSyncHeight, err := db.GetSyncHeights()
 	if err != nil {
-		return errors.WithMessage(err, "Failed to get node sync height")
-	}
-	if !ok {
-		return errors.New("No matching record found(node sync height)")
-	}
-	nodeSyncHeight, err := strconv.ParseUint(value, 10, 64)
-	if err != nil {
-		return errors.WithMessage(err, "Failed to parse node sync height")
-	}
-
-	scanSyncHeight, ok, err := db.BlockStore.MaxBlock()
-	if err != nil {
-		return errors.WithMessage(err, "Failed to get scan sync height")
-	}
-	if !ok {
-		return errors.New("No matching record found(scan sync height)")
+		return errors.WithMessage(err, "Failed to load sync heights")
 	}
 
 	cache.syncHeights = LogSyncInfo{

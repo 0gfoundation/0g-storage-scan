@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -285,6 +286,32 @@ func (ms *MysqlStore) Pop(block uint64) error {
 
 func (ms *MysqlStore) Close() error {
 	return ms.Store.Close()
+}
+
+// GetSyncHeights returns (nodeSyncHeight, scanSyncHeight).
+// It queries ConfigStore and BlockStore for the stored node sync height and max scanned block.
+func (ms *MysqlStore) GetSyncHeights() (uint64, uint64, error) {
+	value, ok, err := ms.ConfigStore.Get(SyncHeightNode)
+	if err != nil {
+		return 0, 0, errors.WithMessage(err, "Failed to get node sync height")
+	}
+	if !ok {
+		return 0, 0, errors.New("No matching record found(node sync height)")
+	}
+	nodeSyncHeight, err := strconv.ParseUint(value, 10, 64)
+	if err != nil {
+		return 0, 0, errors.WithMessage(err, "Failed to parse node sync height")
+	}
+
+	scanSyncHeight, ok, err := ms.BlockStore.MaxBlock()
+	if err != nil {
+		return 0, 0, errors.WithMessage(err, "Failed to get scan sync height")
+	}
+	if !ok {
+		return 0, 0, errors.New("No matching record found(scan sync height)")
+	}
+
+	return nodeSyncHeight, scanSyncHeight, nil
 }
 
 func (ms *MysqlStore) UpdateSubmitByPrimaryKey(s *Submit, as *AddressSubmit) error {

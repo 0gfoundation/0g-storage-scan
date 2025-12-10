@@ -2,12 +2,16 @@ package sync
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/0glabs/0g-storage-scan/rpc"
 	"github.com/0glabs/0g-storage-scan/store"
 	"github.com/Conflux-Chain/go-conflux-util/health"
+	"github.com/openweb3/web3go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,16 +27,18 @@ type StorageSyncer struct {
 	alertChannel     string
 	healthReport     health.TimedCounterConfig
 	storageRpcHealth health.TimedCounter
+	blockchainClient *web3go.Client
 }
 
 func MustNewStorageSyncer(db *store.MysqlStore, storageConfig rpc.StorageConfig, alertChannel string,
-	healthReport health.TimedCounterConfig) *StorageSyncer {
+	healthReport health.TimedCounterConfig, blockchainClient *web3go.Client) *StorageSyncer {
 	return &StorageSyncer{
 		db:               db,
 		storageConfig:    storageConfig,
 		alertChannel:     alertChannel,
 		healthReport:     healthReport,
 		storageRpcHealth: health.TimedCounter{},
+		blockchainClient: blockchainClient,
 	}
 }
 
@@ -83,12 +89,17 @@ func (ss *StorageSyncer) LatestFiles(ctx context.Context, ticker *time.Ticker) {
 }
 
 func (ss *StorageSyncer) NodeSyncHeight(ctx context.Context, ticker *time.Ticker) {
+	var err error
 	nodeStatus, err := rpc.GetNodeStatus(ss.storageConfig)
+
 	if err == nil {
 		height := nodeStatus.LogSyncHeight
-		err := ss.db.ConfigStore.Upsert(nil, store.SyncHeightNode, strconv.FormatUint(height, 10))
+		err = ss.db.ConfigStore.Upsert(nil, store.SyncHeightNode, strconv.FormatUint(height, 10))
 		if err != nil {
 			logrus.WithError(err).Error("Failed to upsert storage node sync height")
+		} else {
+			// Check sync height gaps and use gap error for alerting if present
+			err = ss.checkSyncHeightGaps(height)
 		}
 	}
 
@@ -103,4 +114,47 @@ func (ss *StorageSyncer) NodeSyncHeight(ctx context.Context, ticker *time.Ticker
 			ticker.Reset(intervalNormal)
 		}
 	}
+}
+
+// checkSyncHeightGaps monitors sync height differences and returns error if gaps exceed 1000 blocks
+func (ss *StorageSyncer) checkSyncHeightGaps(nodeSyncHeight uint64) error {
+	if ss.blockchainClient == nil {
+		return nil
+	}
+
+	// Get current blockchain height
+	currentBlock, err := ss.blockchainClient.Eth.BlockNumber()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get current block height for sync monitoring")
+		return err
+	}
+
+	currentHeight := currentBlock.Uint64()
+
+	// Get scanner and node sync heights from database
+	_, scannerSyncHeight, err := ss.db.GetSyncHeights()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get scanner sync height for monitoring")
+		return err
+	}
+
+	// Accumulate gap errors so we can report all of them at once
+	var gapMsgs []string
+	// Check layer1-logsyncheight gap (node sync height vs blockchain height)
+	if currentHeight > nodeSyncHeight && currentHeight-nodeSyncHeight > ss.storageConfig.SyncGapAlertThreshold {
+		gap := currentHeight - nodeSyncHeight
+		gapMsgs = append(gapMsgs, fmt.Sprintf("Layer1LogSyncHeight sync gap: %d blocks behind (sync: %d, current: %d)", gap, nodeSyncHeight, currentHeight))
+	}
+
+	// Check logsyncheight gap (scanner sync height vs blockchain height)
+	if currentHeight > scannerSyncHeight && currentHeight-scannerSyncHeight > ss.storageConfig.SyncGapAlertThreshold {
+		gap := currentHeight - scannerSyncHeight
+		gapMsgs = append(gapMsgs, fmt.Sprintf("LogSyncHeight sync gap: %d blocks behind (sync: %d, current: %d)", gap, scannerSyncHeight, currentHeight))
+	}
+
+	if len(gapMsgs) > 0 {
+		return errors.New(strings.Join(gapMsgs, "; "))
+	}
+
+	return nil // No sync gap issues
 }

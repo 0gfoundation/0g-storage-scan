@@ -29,6 +29,22 @@ var (
 	BatchGetSubmitsByGoroutines = 10
 )
 
+type FileInfo struct {
+	FileInfoParam
+	UploadedSegNum uint64
+}
+
+type StorageConfig struct {
+	Indexer               string
+	Retry                 int
+	RetryInterval         time.Duration `default:"1s"`
+	RequestTimeout        time.Duration `default:"3s"`
+	MaxConnsPerHost       int           `default:"1024"`
+	AlertChannel          string
+	HealthReport          health.TimedCounterConfig
+	SyncGapAlertThreshold uint64 `default:"1000"`
+}
+
 type FileInfoParam struct {
 	SubmissionIndex uint64
 	Status          uint8
@@ -61,21 +77,6 @@ func (executor *FileInfoExecutor) ParallelCollect(ctx context.Context, result *p
 	executor.rpcResults[rpcParam.SubmissionIndex] = result.Value
 
 	return nil
-}
-
-type FileInfo struct {
-	FileInfoParam
-	UploadedSegNum uint64
-}
-
-type StorageConfig struct {
-	Indexer         string
-	Retry           int
-	RetryInterval   time.Duration `default:"1s"`
-	RequestTimeout  time.Duration `default:"3s"`
-	MaxConnsPerHost int           `default:"1024"`
-	AlertChannel    string
-	HealthReport    health.TimedCounterConfig
 }
 
 // getFileInfo implements the rpcFunc interface

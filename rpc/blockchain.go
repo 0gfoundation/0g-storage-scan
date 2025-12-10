@@ -330,7 +330,6 @@ func BatchGetBlocks(ctx context.Context, w3c *web3go.Client, blkNums []types.Blo
 		}
 	}
 
-
 	return blockNum2Block, nil
 }
 
