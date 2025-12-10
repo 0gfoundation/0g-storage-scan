@@ -3,10 +3,9 @@ package store
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
-
-	"strconv"
 
 	"github.com/0glabs/0g-storage-scan/metrics"
 	"github.com/0glabs/0g-storage-scan/rpc"
