@@ -203,6 +203,7 @@ func convertStorageTxs(total int64, submits []store.Submit) (*StorageTxList, err
 		if submit.Status == uint8(rpc.PrunedCounted) {
 			submit.Status = uint8(rpc.Pruned)
 		}
+		submitTime := uint64(submit.BlockTime.Unix())
 		storageTx := &StorageTxInfo{
 			TxSeq:            submit.SubmissionIndex,
 			BlockNumber:      submit.BlockNumber,
@@ -215,6 +216,7 @@ func convertStorageTxs(total int64, submits []store.Submit) (*StorageTxList, err
 			Segments:         submit.TotalSegNum,
 			UploadedSegments: submit.UploadedSegNum,
 			Timestamp:        submit.BlockTime.Unix(),
+			Expiration:       submitTime + expireSeconds.Uint64(),
 			DataSize:         submit.Length,
 			StorageFee:       submit.Fee,
 		}

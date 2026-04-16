@@ -196,6 +196,7 @@ type StorageTxInfo struct {
 
 	RootHash   string          `json:"rootHash"`   // Merkle root of the file to upload
 	DataSize   uint64          `json:"dataSize"`   // File size in bytes
+	Expiration uint64          `json:"expiration"` // Expiration timestamp of the uploaded file
 	StorageFee decimal.Decimal `json:"storageFee"` // The storage fee required to upload the file
 	Status     uint8           `json:"status"`     // File upload status, 0-not uploaded,1-partial uploaded,2-uploaded,3-pruned
 
@@ -232,6 +233,17 @@ type StorageTxDetail struct {
 	GasFee   uint64 `json:"gasFee"`   // The gas fee of the transaction on layer1
 	GasUsed  uint64 `json:"gasUsed"`  // The gas used of the transaction on layer1
 	GasLimit uint64 `json:"gasLimit"` // The gas limit of the transaction on layer1
+}
+
+// AccountStats model info
+// @Description Account file statistics
+type AccountStats struct {
+	TotalFiles        int64           `json:"totalFiles"`        // Total number of files uploaded
+	TotalBytes        uint64          `json:"totalBytes"`        // Total size of uploaded files in bytes
+	TotalStorageFee   decimal.Decimal `json:"totalStorageFee"`   // Total storage fee paid
+	ExpiredFiles      int64           `json:"expiredFiles"`      // Number of files past their expiration
+	ExpiringSoonFiles int64           `json:"expiringSoonFiles"` // Number of files expiring within 7 days
+	HealthyFiles      int64           `json:"healthyFiles"`      // Number of files with more than 7 days remaining
 }
 
 // RewardList model info

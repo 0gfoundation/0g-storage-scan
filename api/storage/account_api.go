@@ -43,3 +43,24 @@ func getAccountInfo(c *gin.Context) (interface{}, error) {
 
 	return accountInfo, nil
 }
+
+func getAccountStats(c *gin.Context) (interface{}, error) {
+	addr, err := getAddressInfo(c)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := db.AddressSubmitStore.Stats(addr.ID, expireSeconds.Uint64())
+	if err != nil {
+		return nil, scanApi.ErrDatabase(errors.WithMessagef(err, "Failed to get account stats %v", addr.Address))
+	}
+
+	return &AccountStats{
+		TotalFiles:        result.TotalFiles,
+		TotalBytes:        result.TotalBytes,
+		TotalStorageFee:   result.TotalStorageFee,
+		ExpiredFiles:      result.ExpiredFiles,
+		ExpiringSoonFiles: result.ExpiringSoonFiles,
+		HealthyFiles:      result.HealthyFiles,
+	}, nil
+}

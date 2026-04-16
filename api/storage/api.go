@@ -113,6 +113,7 @@ func Register(router *gin.Engine) {
 	accountsRoute := apiRoute.Group("/accounts")
 	accountsRoute.GET(":address", getAccountInfoHandler)
 	accountsRoute.GET(":address/txs", listAddressTxsHandler)
+	accountsRoute.GET(":address/stats", getAccountStatsHandler)
 
 	minersRoute := apiRoute.Group("/miners")
 	minersRoute.GET("", listMinersHandler)
@@ -390,6 +391,21 @@ func getAccountInfoHandler(c *gin.Context) {
 //	@Router			/accounts/{address}/txs [get]
 func listAddressTxsHandler(c *gin.Context) {
 	api.Wrap(listAddressStorageTxs)(c)
+}
+
+// getAccountStatsHandler godoc
+//
+//	@Summary		Account's file statistics
+//	@Description	Query aggregated file statistics for specified account, including expiry breakdown
+//	@Tags			account
+//	@Accept			json
+//	@Produce		json
+//	@Param			address	path		string	true	"The account address"
+//	@Success		200		{object}	api.BusinessError{Data=AccountStats}
+//	@Failure		600		{object}	api.BusinessError
+//	@Router			/accounts/{address}/stats [get]
+func getAccountStatsHandler(c *gin.Context) {
+	api.Wrap(getAccountStats)(c)
 }
 
 // topnDataHandler godoc

@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+*.DS_Store
+
 0g-storage-scan
 
 # Test binary, built with `go test -c`

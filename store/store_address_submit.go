@@ -138,12 +138,47 @@ func (ass *AddressSubmitStore) Count(addressID *uint64) (*SubmitStatResult, erro
 	}
 
 	var result SubmitStatResult
-	err := ass.DB.Model(&AddressSubmit{}).Select(`count(submission_index) as file_count, 
+	err := ass.DB.Model(&AddressSubmit{}).Select(`count(submission_index) as file_count,
 		IFNULL(sum(length), 0) as data_size, IFNULL(sum(fee), 0) as base_fee, count(distinct tx_hash) as tx_count`).
 		Where("sender_id = ?", addressID).Find(&result).Error
 	if err != nil {
 		return nil, err
 	}
 
+	return &result, nil
+}
+
+type AddressSubmitStatsResult struct {
+	TotalFiles        int64
+	TotalBytes        uint64
+	TotalStorageFee   decimal.Decimal
+	ExpiredFiles      int64
+	ExpiringSoonFiles int64
+	HealthyFiles      int64
+}
+
+// expiringSoonSeconds is the lookahead window (in seconds) used to classify a file as "expiring soon".
+const expiringSoonSeconds = uint64(7 * 24 * 3600) // 7 days
+
+func (ass *AddressSubmitStore) Stats(addressID uint64, expireSeconds uint64) (*AddressSubmitStatsResult, error) {
+	var result AddressSubmitStatsResult
+	err := ass.DB.Model(&AddressSubmit{}).
+		Select(`COUNT(*) as total_files,
+			IFNULL(SUM(length), 0) as total_bytes,
+			IFNULL(SUM(fee), 0) as total_storage_fee,
+			SUM(CASE WHEN UNIX_TIMESTAMP(block_time) + ? < UNIX_TIMESTAMP(NOW()) THEN 1 ELSE 0 END) as expired_files,
+			SUM(CASE WHEN UNIX_TIMESTAMP(block_time) + ? >= UNIX_TIMESTAMP(NOW())
+				AND UNIX_TIMESTAMP(block_time) + ? < UNIX_TIMESTAMP(NOW()) + ?
+				THEN 1 ELSE 0 END) as expiring_soon_files,
+			SUM(CASE WHEN UNIX_TIMESTAMP(block_time) + ? >= UNIX_TIMESTAMP(NOW()) + ?
+				THEN 1 ELSE 0 END) as healthy_files`,
+			expireSeconds,
+			expireSeconds, expireSeconds, expiringSoonSeconds,
+			expireSeconds, expiringSoonSeconds).
+		Where("sender_id = ?", addressID).
+		Find(&result).Error
+	if err != nil {
+		return nil, err
+	}
 	return &result, nil
 }
