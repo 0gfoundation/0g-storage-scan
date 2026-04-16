@@ -47,8 +47,8 @@ func MustNewSyncer(sdk *web3go.Client, db *store.MysqlStore, cf SyncConfig, cs *
 
 	syncer := &Syncer{
 		baseSyncer:          base,
-		syncIntervalNormal:  time.Second,
-		syncIntervalCatchUp: time.Millisecond,
+		syncIntervalNormal:  5 * time.Second,
+		syncIntervalCatchUp: 5 * time.Second,
 		catchupSyncer:       cs,
 		storageSyncer:       ss,
 		patchSyncer:         ps,
@@ -241,6 +241,11 @@ func (s *Syncer) syncOnce(ctx context.Context) (bool, error) {
 		}).Info("Batch sync completed")
 	} else if s.currentBlock%100 == 0 {
 		logrus.WithField("block", s.currentBlock-1).Info("Sync data")
+	}
+
+	// Check if we're now caught up after syncing
+	if s.currentBlock >= latestBlock.Uint64()-s.conf.DelayBlocksAgainstLatest {
+		return true, nil
 	}
 
 	return false, nil
